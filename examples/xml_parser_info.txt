@@ -1,0 +1,74 @@
+[Convert CDATA]
+<![CDATA[<sender>John Smith</sender>]]> -> &lt;sender&gt;John Smith&lt;/sender&gt;
+Для CDATA достаточно экранировать `<`&lt;, `>`&gt;
+
+// Экранирование html символов
+var str=escape(" ") // "%20"
+parseInt(str.substring(1),16) // 32
+// Decimal:
+// &#32;
+// Hex:
+// &#x20;
+
+======================================================
+ignore case at attribute selector
+	Атрибут «i» был предложен еще в спецификации CSS2, но не был включен в стандарт. Он необходим для упрощения определения пути присоединяемого файла. 
+
+a[href$="pdf" i]
+a:not([href*="exmaple.com"], [href*="hoge.com"])
+======================================================
+
+
+[Not fixed]
+1) как корректно отпарсить:
+*<script> var s="</script>"</script>
+2) JSON.stringify memory troubles
+	https://github.com/dominictarr/JSONStream
+	https://gist.github.com/DrPaulBrewer/5990065
+
+BUGS
+	parsing css at https://davidwalsh.name/css-circles
+
+
+
+
+5) implement attribute selectors
+[rel=external] Attribute Equals
+	Точное совпадение
+	key="value" -> key==rel, value == external
+
+[rel*=external] Attribute Contains
+	Атрибут содержит некоторое значение в любом месте
+	key="value" -> key==rel, value.indexOf(external) != -1
+
+[rel^=external] Attribute Begins
+	Атрибут начинается с определенного значения
+	key="value" -> key==rel, value.indexOf(external) == 0
+	
+[rel$=external] Attribute Ends
+	Атрибут оканчивается определенным значением	
+	key="value" -> key==rel, var buf =value.lastIndexOf(external);  buf!= -1 && value.length -buf == external.length
+	
+[rel~=external] Attribute Space Separated
+	Атрибут содержит значение в списке разделенном пробелами
+	key="value" -> key==rel, var buf =value.indexOf(external);
+	buf!=-1 &&  (value[buf-1]==" " || value[buf-1]==undefined ) && (value[buf+external.length-1]==" " || value[buf+external.length+1]==undefined )
+	
+[rel|=external] Attribute Dash Separated
+	Атрибут содержит значение в списке разделенном тире
+	key="value" -> key==rel, var buf =value.indexOf(external);
+	buf!=-1 &&  (value[buf-1]=="-" || value[buf-1]==undefined ) && (value[buf+external.length-1]=="-" || value[buf+external.length+1]==undefined )
+
+6) implement pseudo classes
+implement
+	:last-child
+	:first-child
+	:nth-child(2n+1)
+	:not()
+not implement:
+	:checked - similar [checked]
+	:disabled - similar [disabled]
+
+// sandbox execution:
+https://nodejs.org/api/vm.html
+
