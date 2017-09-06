@@ -1,11 +1,11 @@
 {
   "name": "dom_parser",
-  "version": "0.1",
+  "version": "1.0.0",
   "description": "DOM parser",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "run": "node examples/currency.js"
+    "check": "node examples/currency.js"
   },
   "author": "n.maltsev",
   "license": "ISC"
