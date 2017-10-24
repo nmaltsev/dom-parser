@@ -26,26 +26,26 @@ while(i-- > 0){
 		'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 		// 'Referer': 'https://addons.mozilla.org/ru/firefox/',
 		'Connection': 'keep-alive',
-		'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+		'Accept':
+'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
 		'Accept-Encoding': 'gzip, deflate, sdch',
 		'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
-		// Accept: '*/*',
+		Accept: '*/*',
 	});
 
 	xrequest.fetch(reqData, function(body, res){
-		console.log('Fetch %s, status: %s', conf.id, res.statusCode);
 		// console.dir(conf);
 		// console.log(body);
 		// console.dir(res.headers);
 		var 	$doc = XmlParser.parseDocument(body, {isHtml: true}),
 			 	$fields = $doc.querySelectorAll(conf.selector),
-			 	i = $fields.length;
+			 	i = Array.isArray($fields) && $fields.length;		
 
-		console.log('TOTAL: %s', i);
+		console.log('Fetch %s, status: %s, total: %s', conf.id, 
+res.statusCode, i);
 
 		while(i-- > 0){
-			console.log('Find');
-			console.dir($fields[i].getTextContent());
+			console.log('Find %s', $fields[i].getTextContent());
 		}
 	}, function(er){
 		console.log('Fetch failed');
