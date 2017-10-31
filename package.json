@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "check": "node examples/currency.js"
+    "check": "node examples/currency.js",
+    "rendertest": "node examples/table.js"
   },
   "author": "n.maltsev",
   "license": "ISC"

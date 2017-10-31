@@ -129,6 +129,9 @@ function NodeMixin(){
 			return value;
 		}, '\t');
 	};
+	this.render = function(){
+		// TODO
+	}
 }
 
 ////////////////////////////////////////////////////////////
@@ -526,12 +529,12 @@ var SelectorService = {
 //	NodeElement
 ////////////////////////////////////////////////////////////
 {
-	function NodeElement(name){
+	function NodeElement(tagName){
 		this.attr = {};
 		this.childNodes = [];
 		this.children = [];
-		this.classList=[];
-		this.tagName = name;
+		this.classList = [];
+		this.tagName = tagName;
 		this.nextSibling = undefined;
 		this.previousSibling = undefined;
 		this.nextElementSibling = undefined;
