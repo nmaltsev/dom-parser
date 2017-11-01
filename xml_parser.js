@@ -129,9 +129,6 @@ function NodeMixin(){
 			return value;
 		}, '\t');
 	};
-	this.render = function(){
-		// TODO
-	}
 }
 
 ////////////////////////////////////////////////////////////
