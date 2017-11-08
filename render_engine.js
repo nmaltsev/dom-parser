@@ -3,33 +3,16 @@ var		XmlParser = require('./xml_parser'),
 		Text = XmlParser.TextElement, 
 		NodeElement = XmlParser.NodeElement;
 
-// TODO How to create instance of child class from instance of parentClass	
-// HtmlElement()
-/*
-Maybe: 
+const DEFAULT_STYLES = Symbol('defaultStyles');
 
+// Attention: Class API stay at NodeElement to save ability of extracting with css selectors
 class HtmlElement extends NodeElement{
 	constructor(tagName){
 		super(tagName);
-		this.init();
-	}
-	init(){
-		this.defaultStyles = {}; // virtual
-	}
-}
-var a = new NodeElement();
-a.prototype = b.prototype;
-a.prototype.init.call(a);
-
-*/
-
-
-
-// Maybe to here replace methods for working with classes from NodeElement
-class HtmlElement extends NodeElement{
-	constructor(tagName){
-		super(tagName);
-		this.defaultStyles = {}; // virtual
+		this.style = {};
+		// Private field:
+		this[DEFAULT_STYLES] = {};
+		Object.setPrototypeOf(this.style, this[DEFAULT_STYLES]);
 	}
 	render(){
 		// TODO reqursively render 
@@ -39,14 +22,28 @@ class HtmlElement extends NodeElement{
 	}
 }
 
-class TableElement extends HtmlElement{
+class HTMLTableElement extends HtmlElement{
 	constructor(){
 		super('table');
-
-		this.defaultStyles = {
-			display: 'table'
-		}; 
+		this[DEFAULT_STYLES].display = 'table';
+	}
+}
+class HTMLTableRowElement extends HtmlElement{
+	constructor(){
+		super('tr');
+		this[DEFAULT_STYLES].display = 'table-row';
+	}
+}
+class HTMLTableCellElement extends HtmlElement{
+	constructor(){
+		super('td');
+		this[DEFAULT_STYLES].display = 'table-cell';	
 	}
 }
 
 
+
+module.exports.HtmlElement = HtmlElement;
+module.exports.HTMLTableElement = HTMLTableElement;
+module.exports.HTMLTableRowElement = HTMLTableRowElement;
+module.exports.HTMLTableCellElement = HTMLTableCellElement;
