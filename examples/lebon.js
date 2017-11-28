@@ -17,6 +17,19 @@ $request.fetch($request.getUriConfig('GET', link, {
 	console.log('Success');
 	console.log(body);
 	// console.dir(res.headers);
+	
+	// get all notices: '.tabsContent>ul>li'
+	// find '[itemprop="availabilityStarts"]' extract attribute (content="2017-11-28")
+	// get next link (extract href attribute): '#next'
+
+
+/*
+<p class="item_supp" itemprop="availabilityStarts" content="2017-11-28">
+		                            
+		                            Aujourd'hui, 12:12
+	                            </p>
+*/	
+
 
 }, function(er){
 	console.log('Fetch failed');
