@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "check": "node examples/currency.js",
-    "rendertest": "node examples/table.js"
+    "rendertest": "node examples/table.js",
+    "lebon": "node examples/lebon.js"
   },
   "author": "n.maltsev",
   "license": "ISC"
