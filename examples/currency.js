@@ -23,26 +23,21 @@ while(i-- > 0){
 	let 	conf = base[i];
 
 	reqData = xrequest.getUriConfig('GET', conf.link, {
-		'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
+		Connection: 'keep-alive',
+		Accept: '*/*',
 		// 'Referer': 'https://addons.mozilla.org/ru/firefox/',
-		'Connection': 'keep-alive',
-		'Accept':
-'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+		// 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
 		'Accept-Encoding': 'gzip, deflate, sdch',
 		'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
-		Accept: '*/*',
+		'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 	});
 
-	xrequest.fetch(reqData, function(body, res){
-		// console.dir(conf);
-		// console.log(body);
-		// console.dir(res.headers);
-		var 	$doc = XmlParser.parseDocument(body, {isHtml: true}),
+	xrequest.fetch(reqData, function(d){
+		var 	$doc = XmlParser.parseDocument(d.body, {isHtml: true}),
 			 	$fields = $doc.querySelectorAll(conf.selector),
 			 	i = Array.isArray($fields) && $fields.length;		
 
-		console.log('Fetch %s, status: %s, total: %s', conf.id, 
-res.statusCode, i);
+		console.log('Fetch %s, status: %s, total: %s', conf.id, d.response.statusCode, i);
 
 		while(i-- > 0){
 			console.log('Find %s', $fields[i].getTextContent());

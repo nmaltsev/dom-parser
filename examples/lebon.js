@@ -3,35 +3,70 @@ const $request = require('./../xrequest');
 
 var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Nice%2CAntibes%2006600%2CCagnes-sur-Mer%2006800&sqs=1&ros=1&ret=2';
 
-$request.fetch($request.getUriConfig('GET', link, {
-	'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
-	// 'Referer': 'https://addons.mozilla.org/ru/firefox/',
-	'Connection': 'keep-alive',
-	'Accept':
-	'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-	'Accept-Encoding': 'gzip, deflate, sdch',
-	'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
-	Accept: '*/*',
-}), function(body, res){
-	// console.dir(conf);
-	console.log('Success');
-	console.log(body);
-	// console.dir(res.headers);
+// $request.fetch($request.getUriConfig('GET', link, {
+// 	'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
+// 	// 'Referer': 'https://addons.mozilla.org/ru/firefox/',
+// 	'Connection': 'keep-alive',
+// 	'Accept':
+// 	'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+// 	'Accept-Encoding': 'gzip, deflate, sdch',
+// 	'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
+// 	Accept: '*/*',
+// }), function(body, res){
+// 	// console.dir(conf);
+// 	console.log('Success');
+// 	console.log(body);
+// 	// console.dir(res.headers);
 	
-	// get all notices: '.tabsContent>ul>li'
-	// find '[itemprop="availabilityStarts"]' extract attribute (content="2017-11-28")
-	// get next link (extract href attribute): '#next'
+// 	// get all notices: '.tabsContent>ul>li'
+// 	// find '[itemprop="availabilityStarts"]' extract attribute (content="2017-11-28")
+// 	// get next link (extract href attribute): '#next'
 
 
-/*
-<p class="item_supp" itemprop="availabilityStarts" content="2017-11-28">
+
+// // <p class="item_supp" itemprop="availabilityStarts" content="2017-11-28">
 		                            
-		                            Aujourd'hui, 12:12
-	                            </p>
-*/	
+// // 		                            Aujourd'hui, 12:12
+// // 	                            </p>	
 
 
-}, function(er){
-	console.log('Fetch failed');
-	console.dir(er);
-});
+// }, function(er){
+// 	console.log('Fetch failed');
+// 	console.dir(er);
+// });
+
+
+
+
+
+class PageCollector{
+	// @param {String} url
+	// @param {Object} $request
+	constructor(url, $request){
+		this.url = url;
+		this.$request = $request;
+		this.links = [];
+	}
+	download(){
+		return this.$request.petch(this.$request.getUriConfig('GET', this.url, {
+			Connection: 'keep-alive',
+			Accept: '*/*',
+			// 'Referer': 'https://addons.mozilla.org/ru/firefox/',
+			// 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+			'Accept-Encoding': 'gzip, deflate, sdch',
+			'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
+			'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
+		})).then((d) => {
+			console.log('Body size: %s', d.body.length);
+			// TODO parse and continue reqursion 
+
+			return true;
+		})
+	}
+}
+
+let pageCollector = new PageCollector(link, $request)
+
+pageCollector.download().then(function(){
+	console.log('Completed');
+})

@@ -19,7 +19,11 @@ function fetch(reqData, _next, _reject){
 		          	if(err){
 		          		_reject(err);
 		          	}else{
-		          		_next(decoded && decoded.toString(), res);
+		          		// _next(decoded && decoded.toString(), res);
+		          		_next({
+		          			body: decoded && decoded.toString(),
+		          			response: res
+		          		});
 		          	}
 		        });
 	      	}else if(encoding == 'deflate'){
@@ -27,17 +31,32 @@ function fetch(reqData, _next, _reject){
 		          	if(err){
 		          		_reject(err);
 		          	}else{
-		          		_next(decoded && decoded.toString(), res);
+		          		// _next(decoded && decoded.toString(), res);
+		          		_next({
+		          			body: decoded && decoded.toString(),
+		          			response: res
+		          		});
 		          	}	
 		        });
 	      	}else{
-	        	_next(buffer.toString(), res)
+	        	// _next(buffer.toString(), res)
+	        	_next({
+          			body: buffer.toString(),
+          			response: res
+          		});
 	      	}
 	    });
 	});
 	req.write('');
   	req.end();
 }
+
+function petch(reqData){
+	return new Promise(function(_resolve, _reject){
+		fetch(reqData, _resolve, _reject);
+	});
+}
+
 function TinyUrlParser(url, separateProperties){
 	var 	res = Object.create(null), 
 			pos;
@@ -75,6 +94,7 @@ function TinyUrlParser(url, separateProperties){
 
 	return res;
 }
+
 function getUriConfig(method, url, headers){
 	var 	data = TinyUrlParser(url, false);
 	
@@ -91,4 +111,5 @@ function getUriConfig(method, url, headers){
 }		
 
 module.exports.fetch = fetch;
+module.exports.petch = petch;
 module.exports.getUriConfig = getUriConfig;
