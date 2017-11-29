@@ -25,9 +25,6 @@ class PageCollector{
 			'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
 			'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 		})).then((d) => {
-			
-			// TODO parse and continue recursion 
-
 			var 	doc = this.$parser.parseDocument(d.body, {isHtml: true}),
 			 		links = doc.querySelectorAll('.tabsContent>ul>li>a');
 
@@ -54,13 +51,26 @@ class PageCollector{
 					isCompleted = true;
 				}
 				console.log('D: %s, link: %s', date, link);
+				this.links.push(link);
 			}
 
 			console.log('Founded links: %s, isCompleted: %s', links.length, isCompleted);
 			// get next link (extract href attribute): '#next'
 
+			if(!isCompleted){
+				let nextLink = doc.querySelector('#next');
 
-			return true;
+				if(nextLink){
+					nextLink = nextLink.getAttribute('href');
+
+					console.log('Continue: %s', nextLink);
+					// TODO parse and continue recursion 
+
+					return true;
+				}				
+			}else{
+				return true;	
+			}
 		})
 	}
 }
