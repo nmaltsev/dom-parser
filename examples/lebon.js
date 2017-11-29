@@ -1,50 +1,18 @@
-const $request = require('./../xrequest');	
+const 	$request = require('./../xrequest');	
+const 	$xmlParser = require('./../xml_parser');
+const	$parseDocument = $xmlParser.parseDocument;	
 
 
 var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Nice%2CAntibes%2006600%2CCagnes-sur-Mer%2006800&sqs=1&ros=1&ret=2';
 
-// $request.fetch($request.getUriConfig('GET', link, {
-// 	'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
-// 	// 'Referer': 'https://addons.mozilla.org/ru/firefox/',
-// 	'Connection': 'keep-alive',
-// 	'Accept':
-// 	'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-// 	'Accept-Encoding': 'gzip, deflate, sdch',
-// 	'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
-// 	Accept: '*/*',
-// }), function(body, res){
-// 	// console.dir(conf);
-// 	console.log('Success');
-// 	console.log(body);
-// 	// console.dir(res.headers);
-	
-// 	// get all notices: '.tabsContent>ul>li'
-// 	// find '[itemprop="availabilityStarts"]' extract attribute (content="2017-11-28")
-// 	// get next link (extract href attribute): '#next'
-
-
-
-// // <p class="item_supp" itemprop="availabilityStarts" content="2017-11-28">
-		                            
-// // 		                            Aujourd'hui, 12:12
-// // 	                            </p>	
-
-
-// }, function(er){
-// 	console.log('Fetch failed');
-// 	console.dir(er);
-// });
-
-
-
-
-
 class PageCollector{
 	// @param {String} url
 	// @param {Object} $request
-	constructor(url, $request){
+	// @param {Object} $parser
+	constructor(url, $request, $parser){
 		this.url = url;
 		this.$request = $request;
+		this.$parser = $parser;
 		this.links = [];
 	}
 	download(){
@@ -57,15 +25,47 @@ class PageCollector{
 			'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
 			'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 		})).then((d) => {
-			console.log('Body size: %s', d.body.length);
-			// TODO parse and continue reqursion 
+			
+			// TODO parse and continue recursion 
+
+			var 	doc = this.$parser.parseDocument(d.body, {isHtml: true}),
+			 		links = doc.querySelectorAll('.tabsContent>ul>li>a');
+
+			var 	now = new Date(),
+					currentDate = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+
+			var		isCompleted = false,
+					i = Array.isArray(links) && links.length,
+					link, 
+					date;
+
+			console.log('Body size: %s, today: %s', d.body.length, currentDate);	
+
+			while(i-- > 0){
+				link = links[i].getAttribute('href');
+				
+				if(date = links[i].querySelector('[itemprop="availabilityStarts"]')){
+					date = date.getAttribute('content');
+
+					if(date != currentDate){ // when we find another date
+						isCompleted = true;
+					}
+				}else{
+					isCompleted = true;
+				}
+				console.log('D: %s, link: %s', date, link);
+			}
+
+			console.log('Founded links: %s, isCompleted: %s', links.length, isCompleted);
+			// get next link (extract href attribute): '#next'
+
 
 			return true;
 		})
 	}
 }
 
-let pageCollector = new PageCollector(link, $request)
+let pageCollector = new PageCollector(link, $request, $xmlParser);
 
 pageCollector.download().then(function(){
 	console.log('Completed');
