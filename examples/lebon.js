@@ -6,17 +6,16 @@ const	$parseDocument = $xmlParser.parseDocument;
 var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Nice%2CAntibes%2006600%2CCagnes-sur-Mer%2006800&sqs=1&ros=1&ret=2';
 
 class PageCollector{
-	// @param {String} url
 	// @param {Object} $request
 	// @param {Object} $parser
 	constructor(url, $request, $parser){
-		this.url = url;
 		this.$request = $request;
 		this.$parser = $parser;
 		this.links = [];
 	}
-	download(){
-		return this.$request.petch(this.$request.getUriConfig('GET', this.url, {
+	// @param {String} link
+	download(link){
+		return this.$request.petch(this.$request.getUriConfig('GET', link, {
 			Connection: 'keep-alive',
 			Accept: '*/*',
 			// 'Referer': 'https://addons.mozilla.org/ru/firefox/',
@@ -65,6 +64,7 @@ class PageCollector{
 
 					console.log('Continue: %s', nextLink);
 					// TODO parse and continue recursion 
+					// return this.download(nextLink)
 
 					return true;
 				}				
@@ -75,8 +75,8 @@ class PageCollector{
 	}
 }
 
-let pageCollector = new PageCollector(link, $request, $xmlParser);
+let pageCollector = new PageCollector($request, $xmlParser);
 
-pageCollector.download().then(function(){
+pageCollector.download(link).then(function(){
 	console.log('Completed');
 })

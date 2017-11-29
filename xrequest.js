@@ -108,7 +108,61 @@ function getUriConfig(method, url, headers){
 			headers: headers
 		},
 	};
-}		
+}	
+
+
+class URLMatch{
+	// @param {Object} model - TinyUrlParser
+	constructor(url, separateProperties){
+		this._parse(url, separateProperties);
+	}
+	_parse(url, separateProperties){
+		var 	pos;
+
+		if(separateProperties){
+			pos = url.indexOf('#');
+
+			if(pos != -1){
+				this.hash = url.substr(pos + 1);
+				url = url.substr(0, pos);
+			}
+			pos = url.indexOf('?');
+
+			if(pos != -1){
+				this.query = url.substr(pos + 1);
+				url = url.substr(0, pos);
+			}	
+		}
+		
+		pos = url.indexOf('//');
+
+		if(pos != -1){
+			this.protocol = url.substr(0, pos);
+			url = url.substr(pos + 2);
+		}
+		pos = url.indexOf('/');
+
+		if(pos != -1){
+			this.path = url.substr(pos);
+			url = url.substr(0, pos);
+		}else{
+			this.path = '/';
+		}
+		pos = url.indexOf(':');
+
+		if(pos != -1){ // skip port
+			url = url.substr(0, pos);
+		}
+		this.host = url;		
+	},
+	// @param {String|URLMatch}
+	merge(url){
+		// TODO
+	}
+	toString(){
+		// TODO
+	}
+}	
 
 module.exports.fetch = fetch;
 module.exports.petch = petch;
