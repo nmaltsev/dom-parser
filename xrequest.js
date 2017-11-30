@@ -111,28 +111,26 @@ function getUriConfig(method, url, headers){
 }	
 
 
-class URLMatch{
-	// @param {Object} model - TinyUrlParser
-	constructor(url, separateProperties){
-		this._parse(url, separateProperties);
+class UniversalLink{
+	// @param {Object} url - link
+	constructor(url){
+		this._parse(url);
 	}
-	_parse(url, separateProperties){
+	_parse(url){
 		var 	pos;
 
-		if(separateProperties){
-			pos = url.indexOf('#');
+		pos = url.indexOf('#');
 
-			if(pos != -1){
-				this.hash = url.substr(pos + 1);
-				url = url.substr(0, pos);
-			}
-			pos = url.indexOf('?');
-
-			if(pos != -1){
-				this.query = url.substr(pos + 1);
-				url = url.substr(0, pos);
-			}	
+		if(pos != -1){
+			this.hash = url.substr(pos + 1);
+			url = url.substr(0, pos);
 		}
+		pos = url.indexOf('?');
+
+		if(pos != -1){
+			this.query = url.substr(pos + 1);
+			url = url.substr(0, pos);
+		}	
 		
 		pos = url.indexOf('//');
 
@@ -151,19 +149,38 @@ class URLMatch{
 		pos = url.indexOf(':');
 
 		if(pos != -1){ // skip port
+			this.port = url.substr(pos);
 			url = url.substr(0, pos);
 		}
 		this.host = url;		
-	},
-	// @param {String|URLMatch}
-	merge(url){
-		// TODO
+	}
+	// @param {UniversalLink} urlObject
+	inherit(urlObject){
+		if(urlObject instanceof this.constructor){
+			if(!this.protocol){
+				this.protocol = urlObject.protocol;
+			}
+			if(!this.host){
+				this.host = urlObject.host;
+			}
+			if(!this.port){
+				this.port = urlObject.port;
+			}
+			if(!this.path){
+				this.path = urlObject.path;
+			}else if(this.path.charAt(0) != '/'){
+				this.path = urlObject.path + (urlObject.path.charAt(urlObject.path.length - 1) != '/' ? '/' : '') + this.path;
+			}
+
+			return urlObject;
+		}
 	}
 	toString(){
-		// TODO
+		return (this.protocol || 'http') + '//' + this.host + (this.port ? ':' + this.port : '') + this.path + (this.query ? '?' + this.query : '');
 	}
 }	
 
 module.exports.fetch = fetch;
 module.exports.petch = petch;
 module.exports.getUriConfig = getUriConfig;
+module.exports.UniversalLink = UniversalLink;

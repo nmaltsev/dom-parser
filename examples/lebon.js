@@ -8,13 +8,19 @@ var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur
 class PageCollector{
 	// @param {Object} $request
 	// @param {Object} $parser
-	constructor(url, $request, $parser){
+	constructor($request, $parser){
 		this.$request = $request;
 		this.$parser = $parser;
 		this.links = [];
 	}
-	// @param {String} link
+	// @param {String|UniversalLink} link
 	download(link){
+		if(link instanceof this.$request.UniversalLink){
+			this.location = link;
+		}else{
+			this.location = new this.$request.UniversalLink(link);	
+		}
+
 		return this.$request.petch(this.$request.getUriConfig('GET', link, {
 			Connection: 'keep-alive',
 			Accept: '*/*',
@@ -33,6 +39,7 @@ class PageCollector{
 			var		isCompleted = false,
 					i = Array.isArray(links) && links.length,
 					link, 
+					linkModel,
 					date;
 
 			console.log('Body size: %s, today: %s', d.body.length, currentDate);	
@@ -49,8 +56,13 @@ class PageCollector{
 				}else{
 					isCompleted = true;
 				}
+				
+				linkModel = new this.$request.UniversalLink(link);
+				linkModel.inherit(this.location);
+				this.links.push(linkModel.toString());
+
 				console.log('D: %s, link: %s', date, link);
-				this.links.push(link);
+				console.log('M: %s', linkModel);
 			}
 
 			console.log('Founded links: %s, isCompleted: %s', links.length, isCompleted);
@@ -61,8 +73,14 @@ class PageCollector{
 
 				if(nextLink){
 					nextLink = nextLink.getAttribute('href');
+					console.log('nextLink: %s', nextLink);
+					linkModel = new this.$request.UniversalLink(nextLink);
+					linkModel.inherit(this.location);
+					nextLink = linkModel.toString();
 
 					console.log('Continue: %s', nextLink);
+
+					// TODO escape html entites from nextLink
 					// TODO parse and continue recursion 
 					// return this.download(nextLink)
 
