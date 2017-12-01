@@ -5,12 +5,17 @@ const	$parseDocument = $xmlParser.parseDocument;
 
 var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Nice%2CAntibes%2006600%2CCagnes-sur-Mer%2006800&sqs=1&ros=1&ret=2';
 
-const entitiesMap = {
+var entitiesMap = { // ('à'.charCodeAt(0)).toString(16)
 	'&amp;': '&',
+	'&agrave;': '\u00e0', // à
+	'&eacute;': '\u00e9', //é
 };
+var entityReg = new RegExp('(' + Object.keys(entitiesMap).join('|') + ')', 'ig');
 
 function escapeHtmlEntities(str){
-	return str.replace(/&amp;/ig, '&');
+	return str.replace(entityReg, function(sub, char){
+		return entitiesMap[char];
+	});
 }
 
 class PageCollector{
@@ -69,12 +74,11 @@ class PageCollector{
 				linkModel.inherit(this.location);
 				this.links.push(linkModel.toString());
 
-				console.log('D: %s, link: %s', date, link);
-				console.log('M: %s', linkModel);
+				// console.log('D: %s, link: %s', date, link);
+				// console.log('M: %s', linkModel);
 			}
 
 			console.log('Founded links: %s, isCompleted: %s', links.length, isCompleted);
-			// get next link (extract href attribute): '#next'
 
 			if(!isCompleted){
 				let nextLink = doc.querySelector('#next');
@@ -87,10 +91,9 @@ class PageCollector{
 					nextLink = linkModel.toString();
 
 					console.log('Continue: %s', nextLink);
-
-					// TODO escape html entites from nextLink
 					// TODO parse and continue recursion 
 					// return this.download(nextLink)
+
 
 					return true;
 				}				
@@ -116,15 +119,17 @@ class PageCollector{
 				'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
 				'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 			}), (d) => {
-				report.push(onnext(d));
+				report.push(onnext(link, d));
 				// continue
+				this.proceedPages(onnext, oncomplete, report);
 			}, (e) => {
 				console.warn('Troubles while downloading: %s', link);
 				console.dir(e);
 				// Report about error and continue
-			})
+				this.proceedPages(onnext, oncomplete, report);
+			});
 		}else{
-			oncomplete();
+			oncomplete(report);
 		}
 	}
 }
@@ -132,5 +137,38 @@ class PageCollector{
 let pageCollector = new PageCollector($request, $xmlParser);
 
 pageCollector.download(link).then(function(){
-	console.log('Completed');
+	console.log('Founded %s links', pageCollector.links.length);
+
+	pageCollector.proceedPages(function(link, d){
+		console.log('Downloaded: %s, %s', link, d.body.length);
+
+		var 	doc = pageCollector.$parser.parseDocument(d.body, {isHtml: true}),
+ 				descriptionNode = doc.querySelector('.properties_description>[itemprop="description"]'),
+ 				data = doc.querySelectorAll('.property'),
+ 				i = data && data.length,
+ 				property, value,
+ 				properties = {};
+
+ 		while(i-- > 0){
+ 			property = data[i].getTextContent();
+ 			value = data[i].nextSibling && data[i].nextSibling.getTextContent();
+ 			properties[property.trim()] = value.trim();
+ 		}
+
+		return {
+			link,
+			properties,
+			description: descriptionNode && descriptionNode.getTextContent(),
+		};
+	}, function(report){
+		console.log('[Report]');
+		report.forEach(function(announcement){
+			console.log('\nAnnouncement: %s', announcement.link);
+			console.log('Description: %s', escapeHtmlEntities(announcement.description));
+			console.log('---')
+			for(var key in announcement.properties){
+				console.log(escapeHtmlEntities(key) + ': ' + escapeHtmlEntities(announcement.properties[key]));
+			}
+		})
+	});
 })

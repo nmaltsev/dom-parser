@@ -494,7 +494,7 @@ var SelectorService = {
 	// @param {Bool} asHtml - serialize as Html document
 	// @return {String}
 	Document.prototype.getHTML = function(asHtml){
-		var str = "";
+		var str = '';
 
 		for(var i in this.childNodes){
 			if(this.childNodes[i] instanceof NodeElement){

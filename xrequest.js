@@ -19,7 +19,6 @@ function fetch(reqData, _next, _reject){
 		          	if(err){
 		          		_reject(err);
 		          	}else{
-		          		// _next(decoded && decoded.toString(), res);
 		          		_next({
 		          			body: decoded && decoded.toString(),
 		          			response: res
@@ -31,15 +30,13 @@ function fetch(reqData, _next, _reject){
 		          	if(err){
 		          		_reject(err);
 		          	}else{
-		          		// _next(decoded && decoded.toString(), res);
 		          		_next({
 		          			body: decoded && decoded.toString(),
-		          			response: res
+		          			response: res,
 		          		});
 		          	}	
 		        });
 	      	}else{
-	        	// _next(buffer.toString(), res)
 	        	_next({
           			body: buffer.toString(),
           			response: res
