@@ -7,6 +7,8 @@ function fetch(reqData, _next, _reject){
 		var 	chunks = [],
 				encoding = res.headers['content-encoding'];
 
+		// res.setEncoding('binary');
+
 	    res.on('data', function(chunk){
 	    	chunks.push(chunk);
 	    });
@@ -20,8 +22,10 @@ function fetch(reqData, _next, _reject){
 		          		_reject(err);
 		          	}else{
 		          		_next({
-		          			body: decoded && decoded.toString(),
-		          			response: res
+		          			// body: decoded && decoded.toString(),
+		          			// Represent request body at Buffer
+		          			body: decoded,
+		          			response: res,
 		          		});
 		          	}
 		        });
@@ -31,15 +35,17 @@ function fetch(reqData, _next, _reject){
 		          		_reject(err);
 		          	}else{
 		          		_next({
-		          			body: decoded && decoded.toString(),
+		          			// body: decoded && decoded.toString(),
+		          			body: decoded,
 		          			response: res,
 		          		});
 		          	}	
 		        });
 	      	}else{
 	        	_next({
-          			body: buffer.toString(),
-          			response: res
+          			// body: buffer.toString(),
+          			body: buffer,
+          			response: res,
           		});
 	      	}
 	    });

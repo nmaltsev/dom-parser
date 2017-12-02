@@ -10,5 +10,8 @@
     "lebon": "node examples/lebon.js"
   },
   "author": "n.maltsev",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "iconv": "^2.3.0"
+  }
 }

@@ -1,6 +1,7 @@
 const 	$request = require('./../xrequest');	
 const 	$xmlParser = require('./../xml_parser');
 const	$parseDocument = $xmlParser.parseDocument;	
+const 	$iconv = require('iconv').Iconv;
 
 
 var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Nice%2CAntibes%2006600%2CCagnes-sur-Mer%2006800&sqs=1&ros=1&ret=2';
@@ -9,7 +10,7 @@ var entitiesMap = { // ('à'.charCodeAt(0)).toString(16)
 	'&amp;': '&',
 	'&agrave;': '\u00e0', // à
 	'&eacute;': '\u00e9', //é
-};
+}; // https://en.wikipedia.org/wiki/List_of_Unicode_characters
 var entityReg = new RegExp('(' + Object.keys(entitiesMap).join('|') + ')', 'ig');
 
 function escapeHtmlEntities(str){
@@ -21,9 +22,10 @@ function escapeHtmlEntities(str){
 class PageCollector{
 	// @param {Object} $request
 	// @param {Object} $parser
-	constructor($request, $parser){
+	constructor($request, $parser, $translator){
 		this.$request = $request;
 		this.$parser = $parser;
+		this.$translator = $translator;
 		this.links = [];
 	}
 	// @param {String|UniversalLink} link
@@ -43,7 +45,7 @@ class PageCollector{
 			'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
 			'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 		})).then((d) => {
-			var 	doc = this.$parser.parseDocument(d.body, {isHtml: true}),
+			var 	doc = this.$parser.parseDocument(d.body.toString(), {isHtml: true}),
 			 		links = doc.querySelectorAll('.tabsContent>ul>li>a');
 
 			var 	now = new Date(),
@@ -134,15 +136,31 @@ class PageCollector{
 	}
 }
 
-let pageCollector = new PageCollector($request, $xmlParser);
+let pageCollector = new PageCollector($request, $xmlParser, new $iconv('cp1252', 'utf-8'));
 
+// TODO refactor that code
 pageCollector.download(link).then(function(){
 	console.log('Founded %s links', pageCollector.links.length);
 
 	pageCollector.proceedPages(function(link, d){
-		console.log('Downloaded: %s, %s', link, d.body.length);
+		// Prepare response body
+		var		body;
 
-		var 	doc = pageCollector.$parser.parseDocument(d.body, {isHtml: true}),
+		// Try to convert at unicode
+		var 	contentType = d.response.headers['content-type'] || '',
+				charsetTypeMatch = /charset=([^;]+)/ig.exec(contentType),
+				charset = charsetTypeMatch && charsetTypeMatch[1];
+
+		if(charset == 'windows-1252'){
+			body = pageCollector.$translator.convert(d.body).toString();
+		}else{
+			body = d.body.toString();
+		}
+
+		console.log('Downloaded: %s, %s charset: %s', link, body.length, charset);
+
+		// Parse document
+		var 	doc = pageCollector.$parser.parseDocument(body, {isHtml: true}),
  				descriptionNode = doc.querySelector('.properties_description>[itemprop="description"]'),
  				data = doc.querySelectorAll('.property'),
  				i = data && data.length,
@@ -154,6 +172,12 @@ pageCollector.download(link).then(function(){
  			value = data[i].nextSibling && data[i].nextSibling.getTextContent();
  			properties[property.trim()] = value.trim();
  		}
+
+ 		// TODO get coordinators
+ 		/*
+		var lat = "43.70652 ";
+		var lng = "7.25463 ";
+ 		*/
 
 		return {
 			link,
