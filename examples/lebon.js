@@ -2,7 +2,7 @@ const 	$request = require('./../xrequest');
 const 	$xmlParser = require('./../xml_parser');
 const	$parseDocument = $xmlParser.parseDocument;	
 const 	$iconv = require('iconv').Iconv;
-
+const 	$fs = require('fs');
 
 var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Nice%2CAntibes%2006600%2CCagnes-sur-Mer%2006800&sqs=1&ros=1&ret=2';
 
@@ -138,6 +138,12 @@ class PageCollector{
 
 let pageCollector = new PageCollector($request, $xmlParser, new $iconv('cp1252', 'utf-8'));
 
+function getFirstMatch(pattern, str){
+	var match = pattern.exec(str);
+
+	return match && match[1]
+}
+
 // TODO refactor that code
 pageCollector.download(link).then(function(){
 	console.log('Founded %s links', pageCollector.links.length);
@@ -173,26 +179,36 @@ pageCollector.download(link).then(function(){
  			properties[property.trim()] = value.trim();
  		}
 
- 		// TODO get coordinators
- 		/*
-		var lat = "43.70652 ";
-		var lng = "7.25463 ";
- 		*/
+ 		// Find coordnates (var lat = "43.70652 ";)
+ 		let 	lng = (getFirstMatch(/var\s+lng\s*=\s*"([^\"]+)"/i, body) || '').trim(),
+ 				lat = (getFirstMatch(/var\s+lat\s*=\s*"([^\"]+)"/i, body) || '').trim();
 
 		return {
 			link,
 			properties,
 			description: descriptionNode && descriptionNode.getTextContent(),
+			lng,
+			lat
 		};
 	}, function(report){
 		console.log('[Report]');
 		report.forEach(function(announcement){
 			console.log('\nAnnouncement: %s', announcement.link);
 			console.log('Description: %s', escapeHtmlEntities(announcement.description));
-			console.log('---')
+			
+			if(announcement.lat && announcement.lng){
+				console.log('Lat: %s, Lng: %s', announcement.lat.trim(), announcement.lng.trim());
+			}
+			console.log('---');
 			for(var key in announcement.properties){
 				console.log(escapeHtmlEntities(key) + ': ' + escapeHtmlEntities(announcement.properties[key]));
 			}
-		})
+		});
+		// TODO export to json 
+		$fs.writeFile('./examples/data.json', ';var data = ' + JSON.stringify(report, null, '\t') + ';', function(err) {
+		    if(err){
+		        return console.log(err);
+		    }
+		}); 
 	});
 })
