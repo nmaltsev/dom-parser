@@ -3,29 +3,22 @@ const 	$xmlParser = require('./../xml_parser');
 const	$parseDocument = $xmlParser.parseDocument;	
 const 	$iconv = require('iconv').Iconv;
 const 	$fs = require('fs');
+const 	$literalCompiler = require('./../src/literal_compiler');
 
-var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Nice%2CAntibes%2006600%2CCagnes-sur-Mer%2006800&sqs=1&ros=1&ret=2';
-
-var entitiesMap = { // ('à'.charCodeAt(0)).toString(16)
-	'&amp;': '&',
-	'&agrave;': '\u00e0', // à
-	'&eacute;': '\u00e9', //é
-}; // https://en.wikipedia.org/wiki/List_of_Unicode_characters
-var entityReg = new RegExp('(' + Object.keys(entitiesMap).join('|') + ')', 'ig');
-
-function escapeHtmlEntities(str){
-	return str.replace(entityReg, function(sub, char){
-		return entitiesMap[char];
-	});
-}
+var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Antibes%2006600%2CNice%2006000%2CNice%2006200&sqs=1&ros=1&roe=2&ret=2';
 
 class PageCollector{
 	// @param {Object} $request
 	// @param {Object} $parser
-	constructor($request, $parser, $translator){
+	// @param {Object} $translator
+	// @param {(Date)=>{}:string} $timeFormatter
+	// @param {Object} $helpers
+	constructor($request, $parser, $translator, $timeFormatter, $helpers){
 		this.$request = $request;
 		this.$parser = $parser;
 		this.$translator = $translator;
+		this.$timeFormatter = $timeFormatter;
+		this.$helpers = $helpers;
 		this.links = [];
 	}
 	// @param {String|UniversalLink} link
@@ -49,7 +42,7 @@ class PageCollector{
 			 		links = doc.querySelectorAll('.tabsContent>ul>li>a');
 
 			var 	now = new Date(),
-					currentDate = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+					currentDate = this.$timeFormatter(now);
 
 			var		isCompleted = false,
 					i = Array.isArray(links) && links.length,
@@ -71,6 +64,8 @@ class PageCollector{
 				}else{
 					isCompleted = true;
 				}
+
+				console.log('Link: %s, date: %s', link, date || '-');
 				
 				linkModel = new this.$request.UniversalLink(link);
 				linkModel.inherit(this.location);
@@ -108,8 +103,8 @@ class PageCollector{
 	// @param {(Object) => {}} oncomplete
 	// @param {Array?} report
 	proceedPages(onnext, oncomplete, report){
-		var link = this.links.shift();
-		var report = report || [];
+		var 	link = this.links.shift();
+		var 	report = report || [];
 
 		if(link){
 			this.$request.fetch(this.$request.getUriConfig('GET', link, {
@@ -136,13 +131,46 @@ class PageCollector{
 	}
 }
 
-let pageCollector = new PageCollector($request, $xmlParser, new $iconv('cp1252', 'utf-8'));
+let pageCollector = new PageCollector(
+	$request, 
+	$xmlParser, 
+	new $iconv('cp1252', 'utf-8'),
+	(function(){
+		var _date = new $literalCompiler.Phrase('{0.YY}-{0.MM}-{0.DD}');
 
-function getFirstMatch(pattern, str){
-	var match = pattern.exec(str);
+		return function(date){
+			return _date.compile(new $literalCompiler.DateFormat(date));
+		}
+	}()),
+	{
+		// HELPERS:
+		getFirstMatch: function getFirstMatch(pattern, str){
+			var match = pattern.exec(str);
 
-	return match && match[1]
-}
+			return match && match[1];
+		},
+		escapeHtmlEntities: (function(){
+			// More unicode cracters at https://en.wikipedia.org/wiki/List_of_Unicode_characters
+			// Convertion ('à'.charCodeAt(0)).toString(16)
+			var _entitiesMap = { 
+				'&amp;': '&',
+				'&agrave;': '\u00e0', // à
+				'&eacute;': '\u00e9', //é
+				'&nbsp;': ' ',
+				'&euro;': '\u20ac',
+			}; 
+			var _entityReg = new RegExp('(' + Object.keys(_entitiesMap).join('|') + ')', 'ig');
+
+			return function escapeHtmlEntities(str){
+				return str.replace(_entityReg, function(sub, char){
+					return _entitiesMap[char];
+				});
+			}
+		}())
+	}
+);
+
+
 
 // TODO refactor that code
 pageCollector.download(link).then(function(){
@@ -167,7 +195,7 @@ pageCollector.download(link).then(function(){
 
 		// Parse document
 		var 	doc = pageCollector.$parser.parseDocument(body, {isHtml: true}),
- 				descriptionNode = doc.querySelector('.properties_description>[itemprop="description"]'),
+ 				// descriptionNode = doc.querySelector('.properties_description>[itemprop="description"]'),
  				data = doc.querySelectorAll('.property'),
  				i = data && data.length,
  				property, value,
@@ -175,40 +203,31 @@ pageCollector.download(link).then(function(){
 
  		while(i-- > 0){
  			property = data[i].getTextContent();
- 			value = data[i].nextSibling && data[i].nextSibling.getTextContent();
+
+ 			if(value = data[i].parentNode.querySelector('.value')){
+ 				value = pageCollector.$helpers.escapeHtmlEntities(value.getTextContent());
+ 			}
  			properties[property.trim()] = value.trim();
  		}
 
  		// Find coordnates (var lat = "43.70652 ";)
- 		let 	lng = (getFirstMatch(/var\s+lng\s*=\s*"([^\"]+)"/i, body) || '').trim(),
- 				lat = (getFirstMatch(/var\s+lat\s*=\s*"([^\"]+)"/i, body) || '').trim();
+ 		let 	lng = (pageCollector.$helpers.getFirstMatch(/var\s+lng\s*=\s*"([^\"]+)"/i, body) || '').trim(),
+ 				lat = (pageCollector.$helpers.getFirstMatch(/var\s+lat\s*=\s*"([^\"]+)"/i, body) || '').trim();
 
 		return {
 			link,
 			properties,
-			description: descriptionNode && descriptionNode.getTextContent(),
+			// description: descriptionNode && descriptionNode.getTextContent(),
 			lng,
 			lat
 		};
 	}, function(report){
 		console.log('[Report]');
-		report.forEach(function(announcement){
-			console.log('\nAnnouncement: %s', announcement.link);
-			console.log('Description: %s', escapeHtmlEntities(announcement.description));
-			
-			if(announcement.lat && announcement.lng){
-				console.log('Lat: %s, Lng: %s', announcement.lat.trim(), announcement.lng.trim());
-			}
-			console.log('---');
-			for(var key in announcement.properties){
-				console.log(escapeHtmlEntities(key) + ': ' + escapeHtmlEntities(announcement.properties[key]));
-			}
-		});
-		// TODO export to json 
+
 		$fs.writeFile('./examples/data.json', ';var data = ' + JSON.stringify(report, null, '\t') + ';', function(err) {
 		    if(err){
 		        return console.log(err);
 		    }
 		}); 
 	});
-})
+});
