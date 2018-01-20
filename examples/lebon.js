@@ -81,18 +81,14 @@ class PageCollector{
 				let nextLink = doc.querySelector('#next');
 
 				if(nextLink){
-					nextLink = escapeHtmlEntities(nextLink.getAttribute('href'));
-					console.log('nextLink: %s', nextLink);
+					nextLink = pageCollector.$helpers.escapeHtmlEntities(nextLink.getAttribute('href'));
 					linkModel = new this.$request.UniversalLink(nextLink);
 					linkModel.inherit(this.location);
 					nextLink = linkModel.toString();
 
 					console.log('Continue: %s', nextLink);
-					// TODO parse and continue recursion 
-					// return this.download(nextLink)
 
-
-					return true;
+					return this.download(nextLink);
 				}				
 			}else{
 				return true;	
@@ -223,8 +219,12 @@ pageCollector.download(link).then(function(){
 		};
 	}, function(report){
 		console.log('[Report]');
+		// ';var data = ' + + ';'
+		let filePath = './examples/data.json';
 
-		$fs.writeFile('./examples/data.json', ';var data = ' + JSON.stringify(report, null, '\t') + ';', function(err) {
+		filePath = '../../_projects/lebon/lebon-app/src/assets/data.json';
+
+		$fs.writeFile( filePath,  JSON.stringify(report, null, '\t'), function(err) {
 		    if(err){
 		        return console.log(err);
 		    }

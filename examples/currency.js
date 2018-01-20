@@ -13,6 +13,11 @@ var base = [
 		id: 'sauberbank',
 		link: 'https://www.sauberbank.com/spb/services/currencyrates/',
 		selector: '.widget-column:first-child > .currency_table_1 tr:nth-child(3)>td:nth-child(3)' // or get last of collection!
+	},
+	{
+		id: 'skv konychennaya',
+		link: 'http://valutaspb.ru/',
+		selector: '.price-value[course_flag="eur_sell_from_1000"]'
 	}
 ];
 
@@ -33,14 +38,14 @@ while(i-- > 0){
 	});
 
 	xrequest.fetch(reqData, function(d){
-		var 	$doc = XmlParser.parseDocument(d.body, {isHtml: true}),
+		var 	$doc = XmlParser.parseDocument(d.body.toString(), {isHtml: true}),
 			 	$fields = $doc.querySelectorAll(conf.selector),
 			 	i = Array.isArray($fields) && $fields.length;		
 
 		console.log('Fetch %s, status: %s, total: %s', conf.id, d.response.statusCode, i);
 
 		while(i-- > 0){
-			console.log('Find %s', $fields[i].getTextContent());
+			console.log('\tFind %s', $fields[i].getTextContent());
 		}
 	}, function(er){
 		console.log('Fetch failed');
