@@ -7,17 +7,44 @@ var base = [
 	{
 		id: 'vostexpr',
 		link: 'https://www.vostbank.ru/interactive_blocks/currency_converter2.php',
-		selector: '._widget-converter>.inner-table tr:nth-child(3)>td:nth-child(3)'
+		selectors: [
+			{
+				selector: '._widget-converter>.inner-table tr:nth-child(3)>td:nth-child(3)',
+				label: 'euro'
+			},
+			{
+				selector: '._widget-converter>.inner-table tr:nth-child(2)>td:nth-child(3)',
+				label: 'usd'
+			},
+		],
 	}, 
 	{
 		id: 'sauberbank',
 		link: 'https://www.sauberbank.com/spb/services/currencyrates/',
-		selector: '.widget-column:first-child > .currency_table_1 tr:nth-child(3)>td:nth-child(3)' // or get last of collection!
+		selectors: [
+			{
+				selector: '.widget-column:first-child > .currency_table_1 tr:nth-child(3)>td:nth-child(3)',
+				label: 'euro'
+			},
+			{
+				selector: '.widget-column:first-child > .currency_table_1 tr:nth-child(2)>td:nth-child(3)',
+				label: 'usd'
+			},
+		]
 	},
 	{
 		id: 'skv konychennaya',
 		link: 'http://valutaspb.ru/',
-		selector: '.price-value[course_flag="eur_sell_from_1000"]'
+		selectors: [
+			{
+				selector: '.price-value[course_flag="eur_sell_from_1000"]',
+				label: 'euro'		
+			},
+			{
+				selector: '.price-value[course_flag="usd_sell_from_1000"]',
+				label: 'usd'
+			}
+		]
 	}
 ];
 
@@ -39,14 +66,22 @@ while(i-- > 0){
 
 	xrequest.fetch(reqData, function(d){
 		var 	$doc = XmlParser.parseDocument(d.body.toString(), {isHtml: true}),
-			 	$fields = $doc.querySelectorAll(conf.selector),
-			 	i = Array.isArray($fields) && $fields.length;		
+				i = conf.selectors.length,
+				results = [],
+				value;
 
-		console.log('Fetch %s, status: %s, total: %s', conf.id, d.response.statusCode, i);
-
-		while(i-- > 0){
-			console.log('\tFind %s', $fields[i].getTextContent());
+		while (i--> 0) {
+			value = $doc.querySelector(conf.selectors[i].selector);
+			results.push({
+				value: value && value.getTextContent(),
+				label: conf.selectors[i].label
+			});
 		}
+
+		console.log('Fetch %s, status: %s', conf.id, d.response.statusCode);
+		console.log('\t%s', results.map(function(res){
+			return res.label + ': ' + res.value;
+		}).join(', '));
 	}, function(er){
 		console.log('Fetch failed');
 		console.dir(er);
