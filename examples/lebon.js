@@ -5,7 +5,8 @@ const 	$iconv = require('iconv').Iconv;
 const 	$fs = require('fs');
 const 	$literalCompiler = require('./../src/literal_compiler');
 
-var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Antibes%2006600%2CNice%2006000%2CNice%2006200&sqs=1&ros=1&roe=2&ret=2';
+// var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Antibes%2006600%2CNice%2006000%2CNice%2006200&sqs=1&ros=1&roe=2&ret=2';
+var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Antibes%2006600%2CNice%2006000%2CNice%2006200&mre=800&sqs=2&ros=1&roe=2&ret=2';
 
 class PageCollector{
 	// @param {Object} $request

@@ -1,6 +1,4 @@
-// HtmlParser v42 2018/02/03 (C) N. Maltsev 2014-2018
-
-// `[target = "_blank"]` not alowed; `[target="_blank"]` allowed
+// HtmlParser v40 2016/09/21
 
 var _TAGS = {
 	meta: 1,
@@ -31,39 +29,76 @@ function last(list){
 	return list[list.length - 1];
 }
 
-////////////////////////////////////////////////////////////
-//	ReverseCalc
-////////////////////////////////////////////////////////////
-class ReverseCalc {
-	constructor(expr) {
-		let 	parts = expr.replace(' ', '').replace('-', '+-').replace('n', '*n*').split('+'),
-				i = parts.length;
+// @param {String} expr - '2n+1'
+// @return {Function} cb(n)
+function createCalc(expr){
+	var 	parts = expr.replace(' ', '').replace('-', '+d*').replace('n', '*n').split('+'),
+			i = parts.length,
+			_sumList = [];
 
-		this._sumList = [];
-		this._multList = null;
+	while(i-- > 0){
+		_sumList.push(parts[i].indexOf('*') == -1 ? parts[i] : parts[i].split('*'));
+	}
 
-		while (i-- > 0) {
-			if (parts[i].indexOf('*') == -1) {
-				this._sumList.push(parts[i]);
-			} else {
-				this._multList = parts[i].split('*');
+	return function(n){
+		var 	i = _sumList.length,
+				sum = 0,
+				_variables = {
+					d: -1,
+					n: n
+				},
+				j, mult, buf;
+
+		while(i-- > 0){
+			if(Array.isArray(_sumList[i])){
+				mult = 1;
+				j = _sumList[i].length;
+				while(j-- > 0){
+					buf = _sumList[i][j];
+					if(buf){
+						mult *= _variables[buf] != undefined ? _variables[buf] : isFinite(buf) ? parseInt(buf) : 1;	
+					}
+				}
+				sum += mult;
+			}else{
+				buf = _sumList[i];
+				sum += _variables[buf] != undefined ? _variables[buf] : isFinite(buf) ? parseInt(buf) : 0;
 			}
 		}
-	} 
-	calc(x) {
-		let 	i = this._sumList.length,
+		return sum;
+	}
+}
+
+// @param {String} expr - '2n+1=x' transform to (x)=>{(x-1)/2} return `n` value
+function createReverseCalc(expr){
+	var 	parts = expr.replace(' ', '').replace('-', '+-').replace('n', '*n*').split('+'),
+			i = parts.length,
+			_sumList = [],
+			_multList;
+
+	while(i-- > 0){
+		if(parts[i].indexOf('*') == -1){
+			_sumList.push(parts[i]);
+		}else{
+			_multList = parts[i].split('*');
+		}
+	}
+
+	// @return {Num} n
+	return function(x){
+		var 	i = _sumList.length,
 				n = x,
 				buf;
 
-		while (i-- > 0) {
-			buf = this._sumList[i];
+		while(i-- > 0){
+			buf = _sumList[i];
 			n -= isFinite(buf) ? parseInt(buf) : 0;
 		}
 
-		if (this._multList) {
-			i = this._multList.length;
-			while (i-- > 0) {
-				if (buf = this._multList[i]) {
+		if(_multList){
+			i = _multList.length;
+			while(i-- > 0){
+				if(buf = _multList[i]){
 					n /= isFinite(buf) ? parseInt(buf) : 1;	
 				}
 			}
@@ -71,271 +106,47 @@ class ReverseCalc {
 		return n;
 	}
 }
-////////////////////////////////////////////////////////////
-//	FiltrationRule
-////////////////////////////////////////////////////////////
-class FiltrationRule {
-	constructor(name, option){
-		this.name = name;
-		this.option = option;
-	}
+
+function NodeMixin(){
+	// Attention JSOn.stringify can throw `process out of memeory`
+	this.getJSON = function(){
+		return JSON.stringify(this, function(key, value){
+			if(
+				key == "parentNode" ||
+				key == "nextSibling" ||
+				key == "previousSibling" || 
+				key == "nextElementSibling" ||
+				key == "previousElementSibling"
+			){
+				if(value instanceof NodeElement){
+					return value.tagName + (value.id ? '#' + value.id : '') + (value.classList && value.classList.length > 0 ? '.' + value.classList.join('.') : 'NodeElement');
+				}else if(value instanceof TextElement){
+					return value.textContent;
+				}else{
+					return '';
+				}
+			}
+			return value;
+		}, '\t');
+	};
 }
-////////////////////////////////////////////////////////////
-//	NodeSignature
-////////////////////////////////////////////////////////////
-class NodeSignature {
-	constructor(nodeSelector) {
-		this.cls = [];
-		this.id = '';
-		this.tagName = '';
-		this.conditions = []; 
-
-		this.relationshipType = null; // ~, >>, >, + 
-		this.relationshipTarget = null; // another instance of NodeSignature
-
-		if (nodeSelector) {
-			this.NODE_SEPARTORS.lastIndex = 0;
-			this.parse(nodeSelector);	
-		}
-	}
-	parse(nodeSelector) {
-		this.parseList(nodeSelector
-			.split(this.NODE_SEPARTORS)
-			.filter(function(s){return s && s;})
-		);
-	}
-	parseList(parts) {
-		let 	pos = 0;
-
-		if (/^[\w\-_]+$/.test(parts[pos])) {
-			this.tagName = parts[pos].toLowerCase();
-			pos++;
-		}
-
-		while (pos < parts.length) {
-			if (parts[pos] == '.') {
-				this.cls.push(parts[++pos]);
-				pos++;
-			} else if (parts[pos] == '#') {
-				this.id = parts[++pos];
-				pos++;
-			} else if (parts[pos] == '[') {
-				let rule = new FiltrationRule('attr', []);
-
-				pos++;			
-				while (parts[pos] != ']' && pos < parts.length) {
-					rule.option.push(parts[pos++]);
-				}
-				pos++;
-				this.conditions.push(rule);
-			} else if (!parts[pos]) {
-				pos++;
-			} else if (parts[pos][0] == ':') { // function execution
-				let 	rule = new FiltrationRule(parts[pos++]),
-						stack = [],
-						brackets = 0;
-
-				if (parts[pos] == '(') {
-					brackets++;
-					pos++;
-					while (brackets != 0 && pos < parts.length) {
-						if (parts[pos] == ')') brackets--;
-						if (parts[pos] == '(') brackets++;
-						if (brackets > 0) stack.push(parts[pos]);	
-						pos++;
-					}
-				}
-
-				if (rule.name == ':not') { // convert `not` to selector profile
-					rule.option = new NodeSignature().parseList(stack);
-				} else {
-					rule.option = stack;
-				}
-
-				this.conditions.push(rule);	
-			}else{
-				pos++;
-			}
-		}
-
-		return this;
-	}
-	compareNode(node) {
-		if(
-			(this.id && this.id != node.attr['id'])
-			|| (this.tagName && this.tagName != node.tagName)
-		) {
-			return false;
-		}
-
-		let i = this.cls.length;
-
-		while (i-- > 0) {
-			if (!node.hasClass(this.cls[i])) {
-				return false;
-			}
-		}
-
-		if (this.conditions) {
-			i = this.conditions.length;
-			
-			let 	pos = node.parentNode && (node.parentNode.children.indexOf(node) + 1),
-					len = node.parentNode && node.parentNode.children.length;
-			
-			while (i-- > 0) {
-				switch (this.conditions[i].name) {
-					case ':last-child':
-						if (pos > 0 && len != pos) {
-							return false;
-						}
-						break;
-					case ':first-child':
-						if (pos > 0 && pos != 1) {
-							return false;	
-						} 
-						break;
-					case ':nth-child':
-						let expr = this.conditions[i].option[0];
-
-						if (expr == 'odd') {
-							if (pos%2 != 1) return false;
-						} else if(expr == 'even') {
-							if (pos%2 != 0) return false;
-						} else if (this.NTH_EXPR_PATTERN.test(expr) && len) {
-							let 	rc = new ReverseCalc(expr),
-									n = rc.calc(pos);
-
-							if ((~~n - n) != 0 || n < 1 || n > len) return false;
-						} else {
-							expr = parseInt(expr) || 0;
-
-							if (expr != pos) return false;
-						}
-						break;
-					case 'attr':
-						let 	name = this.conditions[i].option[0],
-								cond = this.conditions[i].option[1],
-								pattern = this.conditions[i].option[2];
-						
-						if (!cond) {
-							if (!node.attr.hasOwnProperty(name)) return false;
-						} else if (node.attr[name] != undefined) {
-							if (pattern) pattern = pattern.replace(/\"/g, '');
-
-							switch (cond) {
-								case '=': // Attribute equal
-									if (node.attr[name] != pattern) return false; 
-									break;
-								case '*=': // Attribute Contains
-									if (node.attr[name].indexOf(pattern) == -1) return false;
-									break;
-								case '^=': // Attribute Begins
-									if (node.attr[name].indexOf(pattern) != 0) return false;
-									break;
-								case '$=': // Attribute Ends
-									let pos = node.attr[name].indexOf(pattern);
-									if (pos == -1 || pos != node.attr[name].length - pattern.length) return false;
-									break;
-								case '~=': // Attribute Space Separated
-									if (
-										node.attr[name]
-											.split(' ')
-											.indexOf(pattern) == -1
-									) return false;
-									break;
-								case '|=': // Attribute Dash Separated
-									if (
-										node.attr[name]
-											.split('-')
-											.indexOf(pattern) == -1
-									) return false;
-									break;
-							}
-						} else {
-							return false;
-						}
-						break;
-					case ':not':
-						if (
-							this.conditions[i].option instanceof NodeSignature 
-							&& this.conditions[i].option.compare(node)
-						) {
-							return false;
-						}
-
-						break;
-				}
-			}
-
-		}
-		return true;
-	}
-	match(node) {
-		if (!this.relationshipType) {
-			if (!this.compareNode(node)) {
-				return false;
-			}
-		} else if (this.relationshipType == ' ' || this.relationshipType == '>>') { // anyparent, find parent that matches tree
-			let 	parent = node.parentNode;
-
-			while (parent.parentNode != undefined) {
-				if (!this.compareNode(parent)) {
-					parent = parent.parentNode;
-				} else {
-					break;
-				}
-			}
-
-			if (parent.parentNode) {
-				node = parent;
-			} else {
-				return false;
-			}
-		} else if (this.relationshipType == '>') {
-			let		parent = node.parentNode;
-
-			if (!((parent instanceof NodeElement) && this.compareNode(parent))) {
-				return false;
-			}
-
-			node = parent;
-		} else if (this.relationshipType == '+') {
-			let 	next = node.nextSibling;
-
-			if (!next || !this.compareNode(next)){
-				return false;
-			}
-			node = next;
-		} else if (this.relationshipType == '~') {
-			do {
-				node = node.previousSibling; // because node that we check must be previous from current node
-				if (node && this.compareNode(node)) break;
-			} while (node != undefined)
-
-			if (!node) return false;
-		} else {
-			return false;
-		}
-
-		if (this.relationshipTarget) {
-			return this.relationshipTarget.match(node);
-		}
-
-		return true;
-	}
-}
-NodeSignature.prototype.NTH_EXPR_PATTERN = /^[\d+-]*n[\d+-]*$/; // `n` important part
-NodeSignature.prototype.NODE_SEPARTORS = /([\*\^\$\~\|]?\=|\"[^"]*\"|#|\.|\[|\]|\(|\)|\:(?:last\-child|first\-child|nth\-child|not))/g;
 
 ////////////////////////////////////////////////////////////
 //	SelectorService
 ////////////////////////////////////////////////////////////
+function PseudoParser(name){
+	this.name = name;			
+	this.stack = []; 
+}
+PseudoParser.prototype.add = function(part){
+	part && this.stack.push(part);
+}
+
 var SelectorService = {
 	QUERY_SPLIT_PATTERN: /\s*(\+|\s|\~|\>)\s*/g, 
 	NTH_EXPR_PATTERN: /^[\d+-]*n[\d+-]*$/, // `n` important part
 	QUERY_SEPARTORS: ['(', ')', '[', ']', '>', '+', '~', ' '], // order of first four items is important!
-	
-	_splitQuery: function(str){
+	splitQuery: function(str){
 		str = str.replace('>>', ' ').replace(this.QUERY_SPLIT_PATTERN, '$1');
 
 		var 	len = str.length,
@@ -383,7 +194,7 @@ var SelectorService = {
 	// 	'+' - next
 	// 	'~' - anynext
 	parseQuery: function(selector){
-		var 	parts = this._splitQuery(selector),
+		var 	parts = this.splitQuery(selector),
 				i = parts.length,
 				nextSelect,
 				root, cur;
@@ -392,15 +203,16 @@ var SelectorService = {
 			// parts[i + 1] - selector
 			// parts[i] - relationsheep with next
 
-			if(!parts[i + 1]){
+			if(!parts[i + 1 ]){
 				return;
 			}else{
 				if(!root){
-					cur = root = new NodeSignature(parts[i + 1]);
+					root = this.parseNodeSelector(parts[i + 1]);
+					cur = root;
 				}else{
-					cur.relationshipTarget = new NodeSignature(parts[i + 1]); // `and` is mean `&&`
-					cur = cur.relationshipTarget;
-					cur.relationshipType = nextSelect;
+					cur = cur.and = this.parseNodeSelector(parts[i + 1]); // `and` is mean `&&`
+					// cur = cur.and;
+					cur.select = nextSelect;
 				}
 				nextSelect = parts[i];
 			}
@@ -408,31 +220,229 @@ var SelectorService = {
 
 		return root;
 	},
-};
+	// @param {String} selector - selector string or splitted array
+	parseNodeSelector: function(selector){
+		return this._list2nodeProfile(
+			selector.split(/([\*\^\$\~\|]?\=|\"[^"]*\"|#|\.|\[|\]|\(|\)|\:(?:last\-child|first\-child|nth\-child|not))/g).filter(function(s){return s && s;})
+		);
+	},
+	// convert plain list to Node profile object
+	// @param {Array} parts 
+	_list2nodeProfile: function(parts){
+		var 	pos = 0,
+				res = {cls: [], id: '', tagName: '', conditions: []};
+		
+		if(/^[\w\-_]+$/.test(parts[pos])){
+			res.tagName = parts[pos].toLowerCase();
+			pos++;
+		}
 
-function NodeMixin(){
-	// Attention JSOn.stringify can throw `process out of memeory`
-	this.getJSON = function(){
-		return JSON.stringify(this, function(key, value){
-			if(
-				key == "parentNode" ||
-				key == "nextSibling" ||
-				key == "previousSibling" || 
-				key == "nextElementSibling" ||
-				key == "previousElementSibling"
-			){
-				if(value instanceof NodeElement){
-					return value.tagName + (value.id ? '#' + value.id : '') + (value.classList && value.classList.length > 0 ? '.' + value.classList.join('.') : 'NodeElement');
-				}else if(value instanceof TextElement){
-					return value.textContent;
-				}else{
-					return '';
+		while(pos < parts.length){
+			if(parts[pos] == '.'){
+				res.cls.push(parts[++pos]);
+				pos++;
+			}else if(parts[pos] == '#'){
+				res.id = parts[++pos];
+				pos++;
+			}else if(parts[pos] == '['){
+				var pseudoParser = new PseudoParser('attr');
+				pos++;			
+				while(parts[pos] != ']' && pos < parts.length){
+					pseudoParser.add(parts[pos++]);
+				}
+				pos++;
+				res.conditions.push(pseudoParser);
+			}else if(!parts[pos]){
+				pos++;
+			}else if(parts[pos][0] == ':'){ // function execution
+				var 	pseudoParser = new PseudoParser(parts[pos++]),
+						brackets = 0;
+
+				if(parts[pos] == '('){
+					brackets++;
+					pos++;
+					while(brackets != 0 && pos < parts.length ){
+						if(parts[pos] == ')') brackets--;
+						if(parts[pos] == '(') brackets++;
+						if(brackets > 0) pseudoParser.add(parts[pos]);	
+						pos++;
+					}
+				}
+				if(pseudoParser.name == ':not'){ // convert `not` to selector profile
+					pseudoParser.stack = this._list2nodeProfile(pseudoParser.stack);
+				}
+
+				res.conditions.push(pseudoParser);	
+			}else{
+				pos++;
+			}
+		}
+		return res;
+	},
+	// @param {NodeElement} node
+	// @param {Object} conf
+	compareNode: function(node, conf){
+		if((conf.id && conf.id != node.attr['id']) || (conf.tagName && conf.tagName != node.tagName)){
+			return false;
+		}
+
+		var i = conf.cls.length;
+		while(i-- > 0){
+			if(!node.hasClass(conf.cls[i])){
+				return false;
+			}
+		}
+
+		if(conf.conditions){
+			i = conf.conditions.length;
+			var 	pos = node.parentNode && (node.parentNode.children.indexOf(node) + 1),
+					len = node.parentNode && node.parentNode.children.length;
+			
+			while(i-- > 0){
+				switch(conf.conditions[i].name){
+					case ':last-child':
+						if(pos > 0 && len != pos){
+							return false;
+						}
+						break;
+					case ':first-child':
+						if(pos > 0 && pos != 1){
+							return false;	
+						} 
+						break;
+					case ':nth-child':
+						var expr = conf.conditions[i].stack[0];
+
+						if(expr == 'odd'){
+							if(pos%2 != 1) return false;
+						}else if(expr == 'even'){
+							if(pos%2 != 0) return false;
+						}else if(this.NTH_EXPR_PATTERN.test(expr) && len){
+							// Variant with matching
+							// var 	calcFunc = createCalc(expr), // compile expretion to math function
+							// 		list = []; // list for numbers of relative childs
+
+							// for(var j = 0; j < len; j++){
+							// 	list.push(calcFunc(j));
+							// }
+
+							// if(list.indexOf(pos) == -1) return false;
+							
+
+							var 	calc = createReverseCalc(expr),
+									n = calc(pos);
+
+							if((~~n - n) != 0 || n < 1 || n > len) return false;
+						}else{
+							expr = parseInt(expr) || 0;
+
+							if(expr != pos) return false;
+						}
+						break;
+					case 'attr':
+						var 	name = conf.conditions[i].stack[0],
+								cond = conf.conditions[i].stack[1],
+								pattern = conf.conditions[i].stack[2];
+						
+						if(!cond){
+							if(node.attr[name] == undefined) return false;
+						}else if(node.attr[name] != undefined){
+							if(pattern) pattern = pattern.replace(/\"/g, '');
+
+							switch(cond){
+								case '=': // Attribute equal
+									if(node.attr[name] != pattern) return false; 
+									break;
+								case '*=': // Attribute Contains
+									if(node.attr[name].indexOf(pattern) == -1) return false;
+									break;
+								case '^=': // Attribute Begins
+									if(node.attr[name].indexOf(pattern) != 0) return false;
+									break;
+								case '$=': // Attribute Ends
+									var pos = node.attr[name].indexOf(pattern);
+									if(pos == -1 || pos != node.attr[name].length - pattern.length) return false;
+									break;
+								case '~=': // Attribute Space Separated
+									var list = node.attr[name].split(' ');
+									if(list.indexOf(pattern) == -1) return false;
+									break;
+								case '|=': // Attribute Dash Separated
+									var list = node.attr[name].split('-');
+									if(list.indexOf(pattern) == -1) return false;
+									break;
+							}
+						}else{
+							return false;
+						}
+						break;
+					case ':not':
+						// TODO compare node with 
+						if(this.compareNode(node, conf.conditions[i].stack)){
+							return false;
+						}
+						break;
 				}
 			}
-			return value;
-		}, '\t');
-	};
-}
+
+		}
+		return true;
+	},
+	isSame: function(node, tree){
+		if(!tree.select){
+			if(!this.compareNode(node, tree)){
+				return false;
+			}
+		}else if(tree.select == ' ' || tree.select == '>>'){ // anyparent, find parent that matches tree
+			var 	parent = node.parentNode;
+
+			while(parent.parentNode != undefined){
+				if(!this.compareNode(parent, tree)){
+					parent = parent.parentNode;
+				}else{
+					break;
+				}
+			}
+
+			if(parent.parentNode){
+				node = parent;
+			}else{
+				return false;
+			}
+		}else if(tree.select == '>'){
+			var 	parent = node.parentNode;
+
+			if(!((parent instanceof NodeElement) && this.compareNode(parent, tree))){
+				return false;
+			}
+
+			node = parent;
+		}else if(tree.select == '+'){
+			var 	next = node.nextSibling;
+
+			if(!next || !this.compareNode(next, tree)){
+				return false;
+			}
+			node = next;
+		}else if(tree.select == '~'){
+			do{
+				node = node.previousSibling; // because node that we check must be previous from current node
+				if(node && this.compareNode(node, tree)) break;
+			}while(node != undefined)
+
+			if(!node) return false;
+		}else{ // select not implemented 
+			return false;
+		}
+		
+		if(tree.and){
+			return this.isSame(node, tree.and);
+		}
+
+		return true;
+	}
+};
+
 ////////////////////////////////////////////////////////////
 //	Document
 ////////////////////////////////////////////////////////////
@@ -500,8 +510,7 @@ function NodeMixin(){
 				res = [];
 
 		for(var i = 0; i < this.stack.length; i++){
-			// if(SelectorService.isSame(this.stack[i], tree)){
-			if (tree.match(this.stack[i])) {
+			if(SelectorService.isSame(this.stack[i], tree)){
 				if(res.push(this.stack[i]) == 1 && onlyFirst) break;
 			}
 		}
@@ -615,7 +624,7 @@ function NodeMixin(){
 		var 	list = list || [],
 				selector = typeof(selector) == 'string' ? SelectorService.parseQuery(selector) : selector;
 
-		if (selector.match(this)) {
+		if(SelectorService.isSame(this, selector)){
 			list.push(this);
 		}
 
@@ -628,7 +637,7 @@ function NodeMixin(){
 	NodeElement.prototype.querySelector = function(selector){
 		var 	selector = typeof(selector) == 'string' ? SelectorService.parseQuery(selector) : selector;
 
-		if (selector.match(this)) {
+		if(SelectorService.isSame(this, selector)){
 			return this;
 		}else{
 			var res;
@@ -639,14 +648,8 @@ function NodeMixin(){
 				}
 			}
 		}
-	};
-	NodeElement.prototype.matches = function(selector) {
-		// TODO parse at 
-	}
-	NodeElement.prototype._matches = function(selector) {
-		// TODO parse at 
-	}
 
+	};
 
 	NodeMixin.call(NodeElement.prototype);
 }
@@ -866,7 +869,7 @@ module.exports.SelectorService = SelectorService;
 module.exports.Document = Document;
 module.exports.NodeElement = NodeElement;
 module.exports.TextElement = TextElement;
-
+module.exports.createCalc = createCalc;
 module.exports.DocumentBuilder = DocumentBuilder;
 // DEPRICATED
 module.exports.parseDocument = XmlParser.parseDocument.bind(XmlParser);

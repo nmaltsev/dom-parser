@@ -1,4 +1,4 @@
-// HtmlParser v42 2018/02/03 (C) N. Maltsev 2014-2018
+// HtmlParser v42 2018/02/03 (C) 2014-2018
 
 // `[target = "_blank"]` not alowed; `[target="_blank"]` allowed
 
@@ -80,6 +80,7 @@ class FiltrationRule {
 		this.option = option;
 	}
 }
+
 ////////////////////////////////////////////////////////////
 //	NodeSignature
 ////////////////////////////////////////////////////////////
@@ -294,7 +295,7 @@ class NodeSignature {
 		} else if (this.relationshipType == '>') {
 			let		parent = node.parentNode;
 
-			if (!((parent instanceof NodeElement) && this.compareNode(parent))) {
+			if (!((parent instanceof NodeElement) && this.compareNode(parent))){
 				return false;
 			}
 
@@ -326,6 +327,7 @@ class NodeSignature {
 }
 NodeSignature.prototype.NTH_EXPR_PATTERN = /^[\d+-]*n[\d+-]*$/; // `n` important part
 NodeSignature.prototype.NODE_SEPARTORS = /([\*\^\$\~\|]?\=|\"[^"]*\"|#|\.|\[|\]|\(|\)|\:(?:last\-child|first\-child|nth\-child|not))/g;
+
 
 ////////////////////////////////////////////////////////////
 //	SelectorService
