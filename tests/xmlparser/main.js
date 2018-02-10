@@ -5,6 +5,21 @@
 
 
 var tests = [
+{
+	selector: 'div[ng-click="abc"][tooltip]'
+},
+{
+	selector: 'div[test]:nth-child(2n+1)'
+},
+{
+	selector: 'div[test]:not([link])'
+},
+{
+	selector: 'div[test()]:not(span:first-child)'
+},
+{
+	selector: 'div[test(]:not(span:first-child)'
+},
 	{
 		selector: 'div',
 		markup: `

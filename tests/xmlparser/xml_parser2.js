@@ -1,4 +1,4 @@
-// HtmlParser v42 2018/02/03 (C) 2014-2018
+// HtmlParser v43 2018/02/09 (C) 2014-2018
 
 // `[target = "_blank"]` not alowed; `[target="_blank"]` allowed
 
@@ -336,7 +336,7 @@ var SelectorService = {
 	QUERY_SPLIT_PATTERN: /\s*(\+|\s|\~|\>)\s*/g, 
 	NTH_EXPR_PATTERN: /^[\d+-]*n[\d+-]*$/, // `n` important part
 	QUERY_SEPARTORS: ['(', ')', '[', ']', '>', '+', '~', ' '], // order of first four items is important!
-	
+	// @return {array | null} null if operation splitting failed
 	_splitQuery: function(str){
 		str = str.replace('>>', ' ').replace(this.QUERY_SPLIT_PATTERN, '$1');
 
@@ -345,12 +345,12 @@ var SelectorService = {
 				i = 0,
 				buf,
 				minPos = 0,
-				brackets = 0,
+				bracketStack = [],
 				cutPos = 0,
 				rez = [];
 
 		while(pos < len){
-			i = brackets == 0 ? this.QUERY_SEPARTORS.length : 4;
+			i = bracketStack.length == 0 ? this.QUERY_SEPARTORS.length : 4;
 			minPos = -1;
 			while(i-- > 0){
 				buf = str.indexOf(this.QUERY_SEPARTORS[i], pos);
@@ -364,11 +364,17 @@ var SelectorService = {
 				if(str[minPos] == ' ' || str[minPos] == '>' || str[minPos] == '+' || str[minPos] == '~'){
 					rez.push(str.substring(cutPos, minPos), str[minPos]);
 					cutPos = minPos + 1;
-				}else if(str[minPos] == '[' || str[minPos] == '('){
-					brackets++; 
-				}else if(str[minPos] == ']' || str[minPos] == ')'){
-					brackets--;
+				} else if (str[minPos] == '[') {
+					bracketStack.push('[');
+				} else if (str[minPos] == '(') {
+					bracketStack.push('(');
+				} else if (
+					(str[minPos] == ']' && bracketStack.pop() != '[' ) ||
+					(str[minPos] == ')' && bracketStack.pop() != '(')
+				) {
+					return null;
 				}
+
 				pos = minPos + 1;	
 			}else{
 				break;
@@ -384,31 +390,35 @@ var SelectorService = {
 	// 	'>' - parent
 	// 	'+' - next
 	// 	'~' - anynext
+	// @return {NodeSignature | null} - null if operation failed
 	parseQuery: function(selector){
-		var 	parts = this._splitQuery(selector),
-				i = parts.length,
-				nextSelect,
-				root, cur;
+		var 	parts = this._splitQuery(selector);
 
-		while(i-=2, i > -2){
-			// parts[i + 1] - selector
-			// parts[i] - relationsheep with next
+		if (Array.isArray(parts)) {
+			var		i = parts.length,
+					nextSelect,
+					root, cur;
 
-			if(!parts[i + 1]){
-				return;
-			}else{
-				if(!root){
-					cur = root = new NodeSignature(parts[i + 1]);
+			while(i-=2, i > -2){
+				// parts[i + 1] - selector
+				// parts[i] - relationsheep with next
+
+				if(!parts[i + 1]){
+					return;
 				}else{
-					cur.relationshipTarget = new NodeSignature(parts[i + 1]); // `and` is mean `&&`
-					cur = cur.relationshipTarget;
-					cur.relationshipType = nextSelect;
+					if(!root){
+						cur = root = new NodeSignature(parts[i + 1]);
+					}else{
+						cur.relationshipTarget = new NodeSignature(parts[i + 1]); // `and` is mean `&&`
+						cur = cur.relationshipTarget;
+						cur.relationshipType = nextSelect;
+					}
+					nextSelect = parts[i];
 				}
-				nextSelect = parts[i];
 			}
-		}
 
-		return root;
+			return root;
+		}
 	},
 };
 
