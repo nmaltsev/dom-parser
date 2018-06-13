@@ -13,5 +13,8 @@
   "license": "ISC",
   "devDependencies": {
     "iconv": "^2.3.0"
+  },
+  "dependencies": {
+    "ssl-root-cas": "^1.2.5"
   }
 }

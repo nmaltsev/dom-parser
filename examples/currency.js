@@ -54,6 +54,7 @@ let 	i = base.length,
 while(i-- > 0){
 	let 	conf = base[i];
 
+
 	reqData = xrequest.getUriConfig('GET', conf.link, {
 		Connection: 'keep-alive',
 		Accept: '*/*',

@@ -2,13 +2,14 @@ var 	$http = require('http'),
 		$https = require('https'),	
 		$zlib  = require('zlib');
 
+$https.globalAgent.options.ca = require('ssl-root-cas/latest').create();
+
 function fetch(reqData, _next, _reject){
 	var req = (reqData.protocol != 'https:' ? $http : $https).request(reqData.config, function(res){
 		var 	chunks = [],
 				encoding = res.headers['content-encoding'];
 
 		// res.setEncoding('binary');
-
 	    res.on('data', function(chunk){
 	    	chunks.push(chunk);
 	    });
@@ -105,6 +106,7 @@ function getUriConfig(method, url, headers){
 		protocol: data.protocol,
 		config: {
 			method: method,
+			rejectUnauthorized: false, // for https
 			host: data.host,
 			port: data.port || (data.protocol != 'https:' ? 80 : 443),
 			path: data.path,
