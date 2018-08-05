@@ -5,8 +5,49 @@ const 	$iconv = require('iconv').Iconv;
 const 	$fs = require('fs');
 const 	$literalCompiler = require('./../src/literal_compiler');
 
-// var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Antibes%2006600%2CNice%2006000%2CNice%2006200&sqs=1&ros=1&roe=2&ret=2';
-var link = 'https://www.leboncoin.fr/locations/offres/provence_alpes_cote_d_azur/?th=1&location=Antibes%2006600%2CNice%2006000%2CNice%2006200&mre=800&sqs=2&ros=1&roe=2&ret=2';
+var link = 'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Nice_06000,Nice_06200,Antibes_06600,Biot_06410&real_estate_type=2&furnished=1&price=300-850&rooms=1-2&square=20-50';
+
+
+/*
+Test case
+
+let d = Time.from();
+d.diff(new Date(), 's');
+*/
+class Time {
+	constructor(date_Date) {
+		console.log(this);
+		this._d_Date = date_Date || new Date();
+	}
+	beginOfDate() {
+		this._d_Date.setHours(0, 0, 0);
+		return this;
+	}
+	yesterday() {
+		this._d_Date.setDate(this._d_Date.getDate() - 1);
+		return this;
+	}
+	toDate() {
+		return this._d_Date;
+	}
+	clone() {
+		return new Time(new Date(this._d_Date));
+	}
+	diff(date_Date, dimension_s){
+		const diff_n = date_Date - this._d_Date;
+		let out_s;
+
+		switch(dimension_s) {
+			case 's': out_s = ~~(diff_n / 1000); break;
+			case 'm': out_s = ~~(diff_n / 60000); break;
+			case 'h': out_s = ~~(diff_n / 360000); break;
+		}	
+		return out_s;
+	}
+}
+Time.from = function(date_Date){
+	return new Time(date_Date);
+}
 
 class PageCollector{
 	// @param {Object} $request
@@ -33,17 +74,23 @@ class PageCollector{
 		return this.$request.petch(this.$request.getUriConfig('GET', link, {
 			Connection: 'keep-alive',
 			Accept: '*/*',
-			// 'Referer': 'https://addons.mozilla.org/ru/firefox/',
-			// 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+			'Referer': 'https://addons.mozilla.org/ru/firefox/',
+			'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
 			'Accept-Encoding': 'gzip, deflate, sdch',
 			'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
 			'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 		})).then((d) => {
 			var 	doc = this.$parser.parseDocument(d.body.toString(), {isHtml: true}),
-			 		links = doc.querySelectorAll('.tabsContent>ul>li>a');
+			 		// links = doc.querySelectorAll('.tabsContent>ul>li>a');
+			 		links = doc.querySelectorAll('[itemtype="http://schema.org/Offer"]>a');
 
-			var 	now = new Date(),
-					currentDate = this.$timeFormatter(now);
+			 console.log(d.body.toString());
+
+			// var 	now = new Date(),
+			// 		currentDate = this.$timeFormatter(now);
+
+			let 	now = Time.from(),
+					currentDate = now.diff(now.clone().beginOfDate(), 'h') > 12 ? this.$timeFormatter(now.toDate()) : this.$timeFormatter(now.yesterday().toDate());
 
 			var		isCompleted = false,
 					i = Array.isArray(links) && links.length,
@@ -192,31 +239,35 @@ pageCollector.download(link).then(function(){
 
 		// Parse document
 		var 	doc = pageCollector.$parser.parseDocument(body, {isHtml: true}),
- 				// descriptionNode = doc.querySelector('.properties_description>[itemprop="description"]'),
- 				data = doc.querySelectorAll('.property'),
- 				i = data && data.length,
- 				property, value,
+				key_s,
  				properties = {};
 
- 		while(i-- > 0){
- 			property = data[i].getTextContent();
+ 		properties['description'] = doc.querySelector('[data-qa-id="adview_description_container"]>div:nth-child(1)');
+ 		properties['cost'] = doc.querySelector('[data-qa-id="adview_price"]');
+ 		properties['surface'] = doc.querySelector('[data-qa-id="criteria_item_square"]>div>div:last-child');
+ 		properties['rooms'] = doc.querySelector('[data-qa-id="criteria_item_rooms"]>div>div:last-child');
+ 		properties['isMeuble'] = doc.querySelector('[data-qa-id="criteria_item_furnished"]>div>div:last-child');
+ 		properties['city'] = doc.querySelector('[data-qa-id="adview_location_informations"]>span');
 
- 			if(value = data[i].parentNode.querySelector('.value')){
- 				value = pageCollector.$helpers.escapeHtmlEntities(value.getTextContent());
+ 		for (key_s in properties) {
+ 			if (properties.hasOwnProperty(key_s)) {
+ 				if (properties[key_s]) {
+ 					properties[key_s] = properties[key_s].getTextContent();
+ 				} else {
+ 					console.warn('There is no `%s` at downloaded page', key_s);
+ 				}
  			}
- 			properties[property.trim()] = value.trim();
  		}
 
- 		// Find coordnates (var lat = "43.70652 ";)
- 		let 	lng = (pageCollector.$helpers.getFirstMatch(/var\s+lng\s*=\s*"([^\"]+)"/i, body) || '').trim(),
- 				lat = (pageCollector.$helpers.getFirstMatch(/var\s+lat\s*=\s*"([^\"]+)"/i, body) || '').trim();
+
+ 		// let 	lng = (pageCollector.$helpers.getFirstMatch(/var\s+lng\s*=\s*"([^\"]+)"/i, body) || '').trim(),
+ 		// 		lat = (pageCollector.$helpers.getFirstMatch(/var\s+lat\s*=\s*"([^\"]+)"/i, body) || '').trim();
 
 		return {
 			link,
 			properties,
-			// description: descriptionNode && descriptionNode.getTextContent(),
-			lng,
-			lat
+			// lng,
+			// lat
 		};
 	}, function(report){
 		console.log('[Report]');
@@ -224,6 +275,9 @@ pageCollector.download(link).then(function(){
 		let filePath = './examples/data.json';
 
 		filePath = '../../_projects/lebon/lebon-app/src/assets/data.json';
+
+		// console.log('Report');
+		// console.dir(report);
 
 		$fs.writeFile( filePath,  JSON.stringify(report, null, '\t'), function(err) {
 		    if(err){
