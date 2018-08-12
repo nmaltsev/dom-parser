@@ -84,36 +84,38 @@ class PageCollector{
 			 		// links = doc.querySelectorAll('.tabsContent>ul>li>a');
 			 		links = doc.querySelectorAll('[itemtype="http://schema.org/Offer"]>a');
 
-			 console.log(d.body.toString());
-
 			// var 	now = new Date(),
 			// 		currentDate = this.$timeFormatter(now);
 
-			let 	now = Time.from(),
-					currentDate = now.diff(now.clone().beginOfDate(), 'h') > 12 ? this.$timeFormatter(now.toDate()) : this.$timeFormatter(now.yesterday().toDate());
+			// let 	now = Time.from(),
+			// 		currentDate = now.diff(now.clone().beginOfDate(), 'h') > 12 ? this.$timeFormatter(now.toDate()) : this.$timeFormatter(now.yesterday().toDate());
 
 			var		isCompleted = false,
 					i = Array.isArray(links) && links.length,
 					link, 
 					linkModel,
-					date;
+					date_s;
 
-			console.log('Body size: %s, today: %s', d.body.length, currentDate);	
+			console.log('Body size: %s, today: %s', d.body.length);	
 
 			while(i-- > 0){
 				link = links[i].getAttribute('href');
 				
-				if(date = links[i].querySelector('[itemprop="availabilityStarts"]')){
-					date = date.getAttribute('content');
+				if(date_s = links[i].querySelector('[itemprop="availabilityStarts"]')){
+					date_s = date_s.getAttribute('content').toLowerCase();
 
-					if(date != currentDate){ // when we find another date
+
+					// if(date != currentDate){ // when we find another date
+					if (date_s.indexOf('aujourd') == -1 && date_s.indexOf('hier') == -1) {
 						isCompleted = true;
 					}
 				}else{
 					isCompleted = true;
 				}
 
-				console.log('Link: %s, date: %s', link, date || '-');
+				// Aujourd'hui, 10:03, hier
+
+				console.log('Link: %s, date: %s', link, date_s || '-');
 				
 				linkModel = new this.$request.UniversalLink(link);
 				linkModel.inherit(this.location);
@@ -125,10 +127,10 @@ class PageCollector{
 
 			console.log('Founded links: %s, isCompleted: %s', links.length, isCompleted);
 
-			if(!isCompleted){
-				let nextLink = doc.querySelector('#next');
+			if (!isCompleted) {
+				let nextLink = doc.querySelector('[name="chevronRight"]');
 
-				if(nextLink){
+				if(nextLink = nextLink.parentNode){
 					nextLink = pageCollector.$helpers.escapeHtmlEntities(nextLink.getAttribute('href'));
 					linkModel = new this.$request.UniversalLink(nextLink);
 					linkModel.inherit(this.location);
