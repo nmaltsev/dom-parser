@@ -716,7 +716,6 @@ var XmlParser = {
 		for(var i = 0; part = list[i], i < len; i += 2){
 			if(list[i + 1] == '<'){ // Text content
 				_currentNode.appendChild(new TextElement(part));
-				console.log('T: `%s`', part);
 			}else if(list[i + 1] != undefined){ // Tag content
 				if(part[0] == "/"){ // close Tag
 					if(_currentNode.parentNode){

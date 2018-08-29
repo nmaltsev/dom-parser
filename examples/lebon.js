@@ -210,7 +210,7 @@ Promise.all(
 			console.log('Downloaded: %s, %s charset: %s', link, body.length, charset);
 
 			// Parse document
-			var 	doc = pageCollector.$parser.parseDocument(body, {isHtml: true}),
+			var 	doc = pageCollector.$parser.DocumentBuilder.parse(body.toString(), {parseHtml: true}),
 					key_s,
 	 				properties = {};
 
