@@ -1,5 +1,5 @@
 /*
-Example of useage
+Example of usage
 tf = new Phrase('{0.YY}-{0.MM}-{0.DD}'),
 tf.compile(DateFormat(new Date())))
 */

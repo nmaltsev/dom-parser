@@ -1,7 +1,7 @@
-var		XmlParser = require('./../xml_parser'),
-		xrequest = require('./../xrequest'),		
-		SelectorService = XmlParser.SelectorService,
-		parseDocument = XmlParser.parseDocument;		
+var		$xmlParser = require('./../xml_parser'),
+		xrequest = require('./../xrequest');
+
+				
 
 var base = [
 	{
@@ -66,7 +66,7 @@ while(i-- > 0){
 	});
 
 	xrequest.fetch(reqData, function(d){
-		var 	$doc = XmlParser.parseDocument(d.body.toString(), {isHtml: true}),
+		var 	$doc = $xmlParser.DocumentBuilder.parse(d.body.toString(), {parseHtml: true}),
 				i = conf.selectors.length,
 				results = [],
 				value;

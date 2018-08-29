@@ -9,7 +9,7 @@ var tests = [
 			
 		</div>`,
 		job: function(markup){
-			var doc = $xmlParser.parseDocument(markup, {isHtml: true});
+			var doc = $xmlParser.DocumentBuilder.parse(markup, {parseHtml: true});
 			var nodes = doc.querySelectorAll('.properties_description > [itemprop="description"]');
 
 			console.log('Founded: %s', nodes.length);
@@ -21,10 +21,20 @@ var tests = [
 		job: function(markup){
 			console.log(markup);
 		}
+	},
+	{
+		markup: 
+		`1234<br/>abc
+		<br><br>zxc<i>@</i><br>123`,
+		job: function(markup){
+			var doc2 = $xmlParser.DocumentBuilder.parse(markup, {parseHtml: true});
+			console.log('`%s`', doc2.getTextContent());
+			console.dir(doc2.childNodes.map((node) => node instanceof $xmlParser.NodeElement ? node.getTextContent() : node.textContent));
+		}
 	}
 ];
 
 tests.forEach(function(test, i){
-	console.log('Test %s', i);
+	console.log('[Test %s]', i);
 	test.job(test.markup);
 });

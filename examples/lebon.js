@@ -1,50 +1,10 @@
 const 	$request = require('./../xrequest');	
 const 	$xmlParser = require('./../xml_parser');
-const	$parseDocument = $xmlParser.parseDocument;	
 const 	$iconv = require('iconv').Iconv;
 const 	$fs = require('fs');
 const 	$literalCompiler = require('./../src/literal_compiler');
 
-/*
-Test case
 
-let d = Time.from();
-d.diff(new Date(), 's');
-*/
-class Time {
-	constructor(date_Date) {
-		console.log(this);
-		this._d_Date = date_Date || new Date();
-	}
-	beginOfDate() {
-		this._d_Date.setHours(0, 0, 0);
-		return this;
-	}
-	yesterday() {
-		this._d_Date.setDate(this._d_Date.getDate() - 1);
-		return this;
-	}
-	toDate() {
-		return this._d_Date;
-	}
-	clone() {
-		return new Time(new Date(this._d_Date));
-	}
-	diff(date_Date, dimension_s){
-		const diff_n = date_Date - this._d_Date;
-		let out_s;
-
-		switch(dimension_s) {
-			case 's': out_s = ~~(diff_n / 1000); break;
-			case 'm': out_s = ~~(diff_n / 60000); break;
-			case 'h': out_s = ~~(diff_n / 360000); break;
-		}	
-		return out_s;
-	}
-}
-Time.from = function(date_Date){
-	return new Time(date_Date);
-}
 
 class PageCollector{
 	// @param {Object} $request
@@ -62,13 +22,14 @@ class PageCollector{
 	// @param {String|UniversalLink} link
 	// @param {string[]} links
 	download(link, links){
-		var _location;
-		if(link instanceof this.$request.UniversalLink){
+		var 	_location;
+		var 	_links = links || [];
+
+		if (link instanceof this.$request.UniversalLink) {
 			_location = link;
-		}else{
+		} else {
 			_location = new this.$request.UniversalLink(link);	
 		}
-		var _links = links || [];
 
 		return this.$request.petch(this.$request.getUriConfig('GET', link, {
 			Connection: 'keep-alive',
@@ -79,14 +40,8 @@ class PageCollector{
 			'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
 			'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 		})).then((d) => {
-			var 	doc = this.$parser.parseDocument(d.body.toString(), {isHtml: true}),
+			var 	doc = $xmlParser.DocumentBuilder.parse(d.body.toString(), {parseHtml: true}),
 			 		links = doc.querySelectorAll('[itemtype="http://schema.org/Offer"]>a');
-
-			// var 	now = new Date(),
-			// 		currentDate = this.$timeFormatter(now);
-
-			// let 	now = Time.from(),
-			// 		currentDate = now.diff(now.clone().beginOfDate(), 'h') > 12 ? this.$timeFormatter(now.toDate()) : this.$timeFormatter(now.yesterday().toDate());
 
 			var		isCompleted = false,
 					i = Array.isArray(links) && links.length,
@@ -111,11 +66,7 @@ class PageCollector{
 
 				linkModel = new this.$request.UniversalLink(link);
 				linkModel.inherit(_location);
-				//this.links.push(linkModel.toString());
 				_links.push(linkModel.toString());
-
-				// console.log('D: %s, link: %s', date, link);
-				// console.log('M: %s', linkModel);
 			}
 
 			console.log('Founded links: %s, isCompleted: %s', _links.length, isCompleted);

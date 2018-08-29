@@ -1,4 +1,4 @@
-// HtmlParser v43 2018/02/09 (C) 2014-2018
+// HtmlParser v43 2018/08/29 (C) 2014-2018
 
 // `[target = "_blank"]` not alowed; `[target="_blank"]` allowed
 
@@ -423,7 +423,7 @@ var SelectorService = {
 };
 
 function NodeMixin(){
-	// Attention JSOn.stringify can throw `process out of memeory`
+	// Attention JSON.stringify can throw `process out of memeory`
 	this.getJSON = function(){
 		return JSON.stringify(this, function(key, value){
 			if(
@@ -443,6 +443,18 @@ function NodeMixin(){
 			}
 			return value;
 		}, '\t');
+	};
+	// @return {String} 
+	this.getTextContent = function(){
+		var str = this instanceof NodeElement && this.tagName == 'br' ? '\n' : '', element;
+
+				for(var nodeIndex in this.childNodes){
+			element = this.childNodes[nodeIndex];
+
+			if(element instanceof TextElement) str += element.textContent;
+			if(element instanceof NodeElement) str += element.getTextContent();
+		}
+		return str;
 	};
 }
 ////////////////////////////////////////////////////////////
@@ -562,19 +574,6 @@ function NodeMixin(){
 	NodeElement.prototype.hasClass = function(name){
 		return this.classList.indexOf(name) >= 0;
 	};
-	// @memberOf NodeElement - return textContent of Node
-	// @return {String} 
-	NodeElement.prototype.getTextContent = function(){
-		var str = '', element;
-
-		for(var nodeIndex in this.childNodes){
-			element = this.childNodes[nodeIndex];
-
-			if(element instanceof TextElement) str += element.textContent;
-			if(element instanceof NodeElement) str += element.getTextContent();
-		}
-		return str;
-	};
 	// @memberOf NodeElement - добавляет дочерний элемент
 	// @param {NodeElement/TextElement} node - добавляемый элемент
 	NodeElement.prototype.appendChild = function(node){
@@ -678,7 +677,7 @@ TextElement.prototype.getJSON = function(){
 };
 
 ////////////////////////////////////////////////////////////
-//	XmlParser
+//	XmlParser (DEPRICATED)
 ////////////////////////////////////////////////////////////
 var XmlParser = {
 	CLEAR_COMMENTS: /\<\!--[\s\S]*?--\>/g,
@@ -717,6 +716,7 @@ var XmlParser = {
 		for(var i = 0; part = list[i], i < len; i += 2){
 			if(list[i + 1] == '<'){ // Text content
 				_currentNode.appendChild(new TextElement(part));
+				console.log('T: `%s`', part);
 			}else if(list[i + 1] != undefined){ // Tag content
 				if(part[0] == "/"){ // close Tag
 					if(_currentNode.parentNode){
@@ -726,12 +726,17 @@ var XmlParser = {
 					var node = this.parseTagContent(part, _document);
 					_currentNode.appendChild(node);
 
+					console.log('TAG: %s', node.tagName);
+
 					if(!(part[part.length - 1] == "/" || conf && conf.isHtml && _TAGS[node.tagName])){
 						_currentNode = node;
 					}
 				}
 			}
 		}
+
+		console.log('Parse complete i: %s, len: %s, part: `%s`', i, len, part);
+		
 		return _document;
 	},
 	// @memberOf XmlParser
@@ -830,7 +835,7 @@ var DocumentBuilder = {
 							
 							_node.appendChild(node);
 							if(!((conf.parseHtml || conf.doctype == 'html') && _TAGS[node.tagName])){
-								_node = node
+								_node = node;
 							}
 						}
 					}
@@ -841,6 +846,7 @@ var DocumentBuilder = {
 
 			}
 		}
+		
 
 		return _document;
 	},
