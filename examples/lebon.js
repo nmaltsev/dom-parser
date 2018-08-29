@@ -4,6 +4,8 @@ const 	$iconv = require('iconv').Iconv;
 const 	$fs = require('fs');
 const 	$literalCompiler = require('./../src/literal_compiler');
 
+const 	REPORT_PATH = '../../_projects/lebon/lebon-app/src/assets/data.json';
+
 
 
 class PageCollector{
@@ -179,10 +181,12 @@ let pageCollector = new PageCollector(
 );
 
 
-Promise.all([
-	'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Nice_06000,Nice_06200,Antibes_06600,Juan-les-Pins_06160&furnished=1&real_estate_type=2,1&price=300-900&rooms=1-3&square=25-60',
-	'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Villeneuve-Loubet_06270,Cagnes-sur-Mer_06800,Biot_06410&furnished=1&real_estate_type=2,1&price=300-900&rooms=1-3&square=25-60'
-].map((link_s) => pageCollector.download(link_s))).then(function(results){
+Promise.all(
+	[
+		'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Nice_06000,Nice_06200,Antibes_06600,Juan-les-Pins_06160&furnished=1&real_estate_type=2,1&price=300-900&rooms=1-3&square=25-60',
+		'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Villeneuve-Loubet_06270,Cagnes-sur-Mer_06800,Biot_06410&furnished=1&real_estate_type=2,1&price=300-900&rooms=1-3&square=25-60'
+	].map((link_s) => pageCollector.download(link_s))
+).then(function(results){
 	var links = pageCollector.$helpers.flatten(results);
 	
 	console.log('Collected %s links', links.length);
@@ -239,16 +243,9 @@ Promise.all([
 			};
 		}, 
 		function(report){
-			console.log('[Report]');
-			// ';var data = ' + + ';'
-			let filePath = './examples/data.json';
+			console.log('[Report is ready]');
 
-			filePath = '../../_projects/lebon/lebon-app/src/assets/data.json';
-
-			// console.log('Report');
-			// console.dir(report);
-
-			$fs.writeFile( filePath,  JSON.stringify(report, null, '\t'), function(err) {
+			$fs.writeFile(REPORT_PATH, JSON.stringify(report, null, '\t'), function(err) {
 			    if(err){
 			        return console.log(err);
 			    }
