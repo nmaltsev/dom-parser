@@ -51,7 +51,12 @@ class PageCollector{
 					linkModel,
 					date_s;
 
-			console.log('Body size: %s, today: %s', d.body.length);	
+			console.log('Body size: %s', d.body.length);	
+
+			if (i < 1) {
+				console.log(d.body.toString());	
+			}
+			
 
 			while(i-- > 0){
 				link = links[i].getAttribute('href');
@@ -76,7 +81,7 @@ class PageCollector{
 			if (!isCompleted) {
 				let nextLink = doc.querySelector('[name="chevronRight"]');
 
-				if(nextLink = nextLink.parentNode){
+				if(nextLink = nextLink && nextLink.parentNode){
 					nextLink = pageCollector.$helpers.escapeHtmlEntities(nextLink.getAttribute('href'));
 					linkModel = new this.$request.UniversalLink(nextLink);
 					linkModel.inherit(_location);
@@ -109,8 +114,12 @@ class PageCollector{
 				'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 			}), (d) => {
 				report.push(onnext(link, d));
-				// continue
-				this.proceedPages(links, onnext, oncomplete, report);
+				var delay_n = 3000 + ~~(Math.random() * 10000);
+
+				setTimeout(() => {
+					// continue
+					this.proceedPages(links, onnext, oncomplete, report);
+				}, delay_n);
 			}, (e) => {
 				console.warn('Troubles while downloading: %s', link);
 				console.dir(e);
