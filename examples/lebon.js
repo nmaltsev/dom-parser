@@ -1,10 +1,19 @@
 const 	$request = require('./../xrequest');	
 const 	$xmlParser = require('./../xml_parser');
-const 	$iconv = require('iconv').Iconv;
+// const 	$iconv = require('iconv').Iconv;
 const 	$fs = require('fs');
 const 	$literalCompiler = require('./../src/literal_compiler');
 
-const 	REPORT_PATH = '../../_projects/lebon/lebon-app/src/assets/data.json';
+// const 	REPORT_PATH = '../../_projects/lebon/lebon-app/src/assets/data.json';
+const 	REPORT_PATH = 'data.json';
+
+function timeMetter() {
+	var _start_n = Date.now();
+	return function(){
+		return Date.now() - _start_n;
+	}
+}
+
 
 
 
@@ -32,69 +41,74 @@ class PageCollector{
 		} else {
 			_location = new this.$request.UniversalLink(link);	
 		}
+		// this.$helpers.delay(this.$helpers.getRand(3000)).then(() => {
+			return this.$request.petch(this.$request.getUriConfig('GET', link, {
+				Connection: 'keep-alive',
+				Accept: '*/*',
+				'Referer': 'https://addons.mozilla.org/ru/firefox/',
+				'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+				'Accept-Encoding': 'gzip, deflate, sdch',
+				'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
+				'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
+			})).then((d) => {
+				var 	doc = $xmlParser.DocumentBuilder.parse(d.body.toString(), {parseHtml: true}),
+				 		links = doc.querySelectorAll('[itemtype="http://schema.org/Offer"]>a');
 
-		return this.$request.petch(this.$request.getUriConfig('GET', link, {
-			Connection: 'keep-alive',
-			Accept: '*/*',
-			'Referer': 'https://addons.mozilla.org/ru/firefox/',
-			'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-			'Accept-Encoding': 'gzip, deflate, sdch',
-			'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4',
-			'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
-		})).then((d) => {
-			var 	doc = $xmlParser.DocumentBuilder.parse(d.body.toString(), {parseHtml: true}),
-			 		links = doc.querySelectorAll('[itemtype="http://schema.org/Offer"]>a');
+				var		isCompleted = false,
+						i = Array.isArray(links) && links.length,
+						link, 
+						linkModel,
+						date_s;
 
-			var		isCompleted = false,
-					i = Array.isArray(links) && links.length,
-					link, 
-					linkModel,
-					date_s;
+				console.log('Body size: %s', d.body.length);	
 
-			console.log('Body size: %s', d.body.length);	
-
-			if (i < 1) {
-				console.log(d.body.toString());	
-			}
-			
-
-			while(i-- > 0){
-				link = links[i].getAttribute('href');
+				if (i < 1) {
+					console.log(d.body.toString());	
+				}
 				
-				if(date_s = links[i].querySelector('[itemprop="availabilityStarts"]')){
-					date_s = date_s.getAttribute('content').toLowerCase();
 
-					if (date_s.indexOf('aujourd') == -1 && date_s.indexOf('hier') == -1) {
+				while(i-- > 0){
+					link = links[i].getAttribute('href');
+					
+					if(date_s = links[i].querySelector('[itemprop="availabilityStarts"]')){
+						date_s = date_s.getAttribute('content').toLowerCase();
+
+						if (date_s.indexOf('aujourd') == -1 && date_s.indexOf('hier') == -1) {
+							isCompleted = true;
+						}
+					}else{
 						isCompleted = true;
 					}
-				}else{
-					isCompleted = true;
+
+					linkModel = new this.$request.UniversalLink(link);
+					linkModel.inherit(_location);
+					_links.push(linkModel.toString());
 				}
 
-				linkModel = new this.$request.UniversalLink(link);
-				linkModel.inherit(_location);
-				_links.push(linkModel.toString());
-			}
+				console.log('Founded links: %s, isCompleted: %s', _links.length, isCompleted);
 
-			console.log('Founded links: %s, isCompleted: %s', _links.length, isCompleted);
+				if (!isCompleted) {
+					let nextLink = doc.querySelector('[name="chevronRight"]');
 
-			if (!isCompleted) {
-				let nextLink = doc.querySelector('[name="chevronRight"]');
+					if(nextLink = nextLink && nextLink.parentNode){
+						nextLink = pageCollector.$helpers.escapeHtmlEntities(nextLink.getAttribute('href'));
+						linkModel = new this.$request.UniversalLink(nextLink);
+						linkModel.inherit(_location);
+						nextLink = linkModel.toString();
 
-				if(nextLink = nextLink && nextLink.parentNode){
-					nextLink = pageCollector.$helpers.escapeHtmlEntities(nextLink.getAttribute('href'));
-					linkModel = new this.$request.UniversalLink(nextLink);
-					linkModel.inherit(_location);
-					nextLink = linkModel.toString();
+						console.log('Continue: %s', nextLink);
 
-					console.log('Continue: %s', nextLink);
+						// return this.download(nextLink, _links);
 
-					return this.download(nextLink, _links);
-				}				
-			}else{
-				return _links;	
-			}
-		});
+						return this.$helpers.delay(this.$helpers.getRand(3000)).then(() => {
+							return this.download(nextLink, _links);						
+						});
+					}				
+				}else{
+					return _links;	
+				}
+			});
+		// });
 	}
 	// @param {():Object => {}} onnext
 	// @param {(Object) => {}} oncomplete
@@ -114,12 +128,10 @@ class PageCollector{
 				'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',	
 			}), (d) => {
 				report.push(onnext(link, d));
-				var delay_n = 3000 + ~~(Math.random() * 10000);
-
 				setTimeout(() => {
 					// continue
 					this.proceedPages(links, onnext, oncomplete, report);
-				}, delay_n);
+				}, this.$helpers.getRand(3000));
 			}, (e) => {
 				console.warn('Troubles while downloading: %s', link);
 				console.dir(e);
@@ -135,7 +147,8 @@ class PageCollector{
 let pageCollector = new PageCollector(
 	$request, 
 	$xmlParser, 
-	new $iconv('cp1252', 'utf-8'),
+	// new $iconv('cp1252', 'utf-8'),
+	null,
 	(function(){
 		var _date = new $literalCompiler.Phrase('{0.YY}-{0.MM}-{0.DD}');
 
@@ -185,15 +198,27 @@ let pageCollector = new PageCollector(
 			} else {
 				return collection;
 			}
+		},
+		delay: function(time_n) {
+			return new Promise(function(resolve){
+				setTimeout(function(){
+					resolve();
+				}, time_n);
+			})
+		},
+		getRand: function(min_n){
+			return min_n + ~~(Math.random() * 10000);
 		}
 	}
 );
 
 
+const _getTimeFromBegining = timeMetter(); 
 Promise.all(
 	[
 		'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Nice_06000,Nice_06200,Antibes_06600,Juan-les-Pins_06160&furnished=1&real_estate_type=2,1&price=300-900&rooms=1-3&square=25-60',
-		'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Villeneuve-Loubet_06270,Cagnes-sur-Mer_06800,Biot_06410&furnished=1&real_estate_type=2,1&price=300-900&rooms=1-3&square=25-60'
+		'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Villeneuve-Loubet_06270,Cagnes-sur-Mer_06800,Biot_06410&furnished=1&real_estate_type=2,1&price=300-900&rooms=1-3&square=25-60',
+		'https://www.leboncoin.fr/recherche/?category=10&regions=21&cities=Valbonne_06560,Vallauris_06220&furnished=1&real_estate_type=2,1&price=300-900&rooms=1-3&square=25-60'
 	].map((link_s) => pageCollector.download(link_s))
 ).then(function(results){
 	var links = pageCollector.$helpers.flatten(results);
@@ -210,7 +235,7 @@ Promise.all(
 					charsetTypeMatch = /charset=([^;]+)/ig.exec(contentType),
 					charset = charsetTypeMatch && charsetTypeMatch[1];
 
-			if(charset == 'windows-1252'){
+			if(charset == 'windows-1252' && pageCollector.$translator){
 				body = pageCollector.$translator.convert(d.body).toString();
 			}else{
 				body = d.body.toString();
@@ -252,7 +277,7 @@ Promise.all(
 			};
 		}, 
 		function(report){
-			console.log('[Report is ready]');
+			console.log('[Report is ready] total time: %s', _getTimeFromBegining());
 
 			$fs.writeFile(REPORT_PATH, JSON.stringify(report, null, '\t'), function(err) {
 			    if(err){
