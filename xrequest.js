@@ -99,6 +99,7 @@ function TinyUrlParser(url, separateProperties){
 	return res;
 }
 
+// @DEPRICATED
 function getUriConfig(method, url, headers){
 	var 	data = TinyUrlParser(url, false);
 	
@@ -180,8 +181,23 @@ class UniversalLink{
 			return urlObject;
 		}
 	}
+
 	toString(){
 		return (this.protocol || 'http') + '//' + this.host + (this.port ? ':' + this.port : '') + this.path + (this.query ? '?' + this.query : '');
+	}
+
+	getUriConfig(method_s, headers) {
+		return {
+			protocol: this.protocol,
+			config: {
+				method: method_s,
+				rejectUnauthorized: false, // for https
+				host: this.host,
+				port: this.port || (this.protocol != 'https:' ? 80 : 443),
+				path: this.path,
+				headers: headers
+			},
+		};
 	}
 }	
 
