@@ -116,6 +116,11 @@ function getUriConfig(method, url, headers){
 	};
 }	
 
+function restoreUrl(uriConfig) {
+	// TODO add port
+	return uriConfig.protocol + '//' + uriConfig.config.host + uriConfig.config.path;
+}
+
 
 class UniversalLink{
 	// @param {Object} url - link
@@ -203,5 +208,6 @@ class UniversalLink{
 
 module.exports.fetch = fetch;
 module.exports.petch = petch;
+module.exports.restoreUrl = restoreUrl;
 module.exports.getUriConfig = getUriConfig;
 module.exports.UniversalLink = UniversalLink;
