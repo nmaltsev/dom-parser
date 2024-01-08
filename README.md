@@ -1,6 +1,6 @@
-## HtmlParser
+## <X|HT>MLParser (C) 2014-2024
 
-Js library for parsing html document at document object model (DOM) with search support
+Js library for converting HTML and XML documents into Document Object Model (DOM)
 
 ### Features
 
@@ -15,7 +15,7 @@ NodeElement::querySelectorAll()
 NodeElement::querySelector()
 
 Support: 
--	CSS selectors: >>, ' ', ~, >, +
+-	CSS selectors: `>>`, ` `, `~`, `>`, `+`
 -	pseudo classes: `:first-child()`, `:last-child()`, `:nth-child(even)`, `:nth-child(odd)`, `:nth-child(2n-1)`, `:nth-child(3)`,
 -	attribute selectors: `[data]`, `[data=abc]`, `[data="abc"]`, `[data*=abc]`, `[data~=abc]`, `[data^=abc]`, `[data$=abc]`, `[data|=abc]`
 

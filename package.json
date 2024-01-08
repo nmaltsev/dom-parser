@@ -1,8 +1,8 @@
 {
   "name": "dom_parser",
-  "version": "1.0.0",
-  "description": "DOM parser",
-  "main": "index.js",
+  "version": "44.2024.01.08",
+  "description": "A tiny markup language parser",
+  "main": "xml_parser.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "check": "node examples/currency.js",

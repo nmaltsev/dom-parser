@@ -1,4 +1,4 @@
-// HtmlParser v43 2018/08/29 (C) 2014-2018
+// <X|HT>MLParser (C) 2014-2024
 
 // `[target = "_blank"]` not alowed; `[target="_blank"]` allowed
 
@@ -18,8 +18,8 @@ var offset = (function(){
 		if(_cash[level]){
 			return _cash[level];
 		}else{
-			for(var i=0, str = ""; i < level; i++){
-				str+="\t";
+			for(var i=0, str = ''; i < level; i++){
+				str += '\t';
 			}
 			_cash[level]=str;
 			return str;
@@ -885,5 +885,3 @@ module.exports.NodeElement = NodeElement;
 module.exports.TextElement = TextElement;
 
 module.exports.DocumentBuilder = DocumentBuilder;
-// DEPRICATED
-module.exports.parseDocument = XmlParser.parseDocument.bind(XmlParser);
