@@ -1,13 +1,10 @@
 {
   "name": "dom_parser",
-  "version": "44.2024.01.08",
+  "version": "45.2024.01.09",
   "description": "A tiny markup language parser",
   "main": "xml_parser.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "check": "node examples/currency.js",
-    "rendertest": "node examples/table.js",
-    "lebon": "node examples/lebon.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "n.maltsev",
   "license": "ISC",

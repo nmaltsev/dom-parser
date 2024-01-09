@@ -108,7 +108,8 @@ class NodeSignature {
 	parseList(parts) {
 		let 	pos = 0;
 
-		if (/^[\w\-_]+$/.test(parts[pos])) {
+		// tagName can contain colon
+		if (/^[\w\-:_]+$/.test(parts[pos])) {
 			this.tagName = parts[pos].toLowerCase();
 			pos++;
 		}
@@ -462,6 +463,7 @@ function NodeMixin(){
 ////////////////////////////////////////////////////////////
 {
 	function Document(){
+		this.type = 0; // 0 - html, 1 - xml
 		this.childNodes = [];
 		this.children = [];
 		this.stack = [];
@@ -509,10 +511,10 @@ function NodeMixin(){
 	// @return {String}
 	Document.prototype.getHTML = function(asHtml){
 		var str = '';
-
+		// TODO add comments, commets must have their own object type
 		for(var i in this.childNodes){
 			if(this.childNodes[i] instanceof NodeElement){
-				str += this.childNodes[i].getHTML(0, asHtml);
+				str += this.childNodes[i].getHTML(0, (this.type === 0) || asHtml);
 			}else{
 				str += this.childNodes[i].textContent;
 			}
@@ -598,15 +600,23 @@ function NodeMixin(){
 	// @param {Int} level - количество табов слева от элемента
 	// @param {Bool} asHtml
 	NodeElement.prototype.getHTML = function(level, asHtml){
-		var 	str = '\n' + offset(level) + "<" + this.tagName;
+		// this.tagName === 'xml': <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
+		// TODO handle Doctype tag
+		// TODO handle xml tag
+		var 	str = '\n' + offset(level) + (this.tagName === 'xml' ? '<?' : '<') + this.tagName;
+		
 		for(var key in this.attr){
 			str += ' ' + key + (this.attr[key] ? ('=\"' + this.attr[key].replace(/\"/g, '\\"') + '\"') : ''); // Maybe `&quot;`
 		}
-		if(asHtml && _TAGS[this.tagName]){
+		if (asHtml && _TAGS[this.tagName]){
 			str += '/>';
-		}else{
-			str += ">";
+		} 
+		else if (this.tagName === 'xml') {
+			str += '?>';
+		}
+		else {
+			str += '>';
 		
 			for(var i in this.childNodes){
 				if(this.childNodes[i] instanceof NodeElement){
@@ -811,25 +821,34 @@ var DocumentBuilder = {
 				i = 0, str;
 
 		for(;i < len; i++){
-			if(str = tagList[i]){
-				if(str[0] == '<'){ // open tag, close tag, comment
+			if (str = tagList[i]){
+				if (str[0] == '<'){ // open tag, close tag, comment
 					size = str.length;
 
-					if(str[1] == '/'){
+					if (str[1] === '/'){
 						// Close tag
 						if(_node.parentNode){
 							_node = _node.parentNode;
 						}
-					}else if(str[1] == '!' && str[2] == '-' && str[3] == '-'){ 
+					}
+					else if (str[1] === '!' && str[2] === '-' && str[3] === '-'){ 
 						// comment
 						if(!Array.isArray(_node.comments)) _node.comments = [];
 						_node.comments.push(str.slice(4, -3));
-					}else{
-						if(str[size - 2] == '/'){
-							// close tag
+					} 
+					else if (str[1] === '?'){
+						conf.doctype == 'xml';
+						_document.type = 1;
+						var node = this.parseTagContent(str.slice(1, -2), _document);
+						_node.appendChild(node);
+					}
+					else {
+						if (str[size - 2] === '/'){
+							// a single tag
 							var node = this.parseTagContent(str.slice(1, -2), _document);
 							_node.appendChild(node);
-						}else{
+						}
+						else{
 							var node = this.parseTagContent(str.slice(1, -1), _document);
 							
 							_node.appendChild(node);
@@ -853,15 +872,16 @@ var DocumentBuilder = {
 	// @param {String} str
 	// @return {NodeElement}
 	parseTagContent: function(str, doc){
-		var 	parts = str.match(/(\w[\w\-\d]*(?:\s*=\s*(?:\"[\s\S]*?\"|\'[\s\S]*?\'|[^\s]+))?)/g),
+		// Tag name can contain colon for XML and HTML
+		var 	parts = str.match(/(\w[\w\-:\d]*(?:\s*=\s*(?:\"[\s\S]*?\"|\'[\s\S]*?\'|[^\s]+))?)/g),
 				partsLength = parts && parts.length;
 		
-		if(!partsLength) throw('Parse error not found tag in XmlParser.parseTagContent(). `' + str + '` ');
+		if (!partsLength) throw('Parse error not found tag in XmlParser.parseTagContent(). `' + str + '` ');
 
 		var 	tagName = parts[0].toLowerCase(),
 				i = 1, key, value, cutPoint,
 				attr = {};
-
+		
 		for(; i < partsLength; i++){
 			cutPoint = parts[i].indexOf('=');
 			key = parts[i];
@@ -870,7 +890,7 @@ var DocumentBuilder = {
 			if(cutPoint != -1){
 				key = key.substring(0, cutPoint);
 				value = parts[i].substring(cutPoint + 1).trim();
-				value = (value[0] == '\'' || value[0] == '\"') ? value.substring(1, value.length - 1) : value;
+				value = (value[0] === '\'' || value[0] === '\"') ? value.substring(1, value.length - 1) : value;
 			}
 			attr[key.trim()] = value;
 		}
@@ -879,9 +899,68 @@ var DocumentBuilder = {
 	},	
 };
 
+function _removeInArray(list, item) {
+    const pos = list.indexOf(item);
+    if (pos > -1) list.splice(item, 1);
+}
+function _recursiveUnmount($doc, $node) {
+    _removeInArray($doc.stack, $node);
+    if (!Array.isArray($node.childNodes)) return;
+    $node.childNodes.forEach(function($childNode) {
+        _recursiveUnmount($doc, $childNode);
+    });
+}
+
+function removeNode($node) {
+    if (!$node.parentNode) { 
+        console.log('No ParentNode');
+        return;
+    }
+    _removeInArray($node.parentNode.children, $node);
+    _removeInArray($node.parentNode.childNodes, $node);
+    $node.parentNode = undefined;
+}
+function NodeSummary($node){
+    if (!$node) return 'not a node';
+    return $node.constructor.name + ',' + $node.tagName;
+}
+
+function findDocument($node) {
+    let root = $node;
+    while(root && !(root instanceof xmlParser.Document)) {
+        // console.log('R %s', NodeSummary(root))
+        root = root.parentNode;
+    }
+    return root;
+}
+
+function untouchFromDocument($node) {
+    const root = findDocument($node);
+    console.log('Parent %s', NodeSummary(root))
+    if (!root) return;
+    _recursiveUnmount(root, $node);
+}
+// Empty a node and return all its children
+function emptyNode($node) {
+    const $doc = findDocument($node);
+
+    let i = $node.childNodes.length;
+    let $child;
+    while(i-->0) {
+        $child = $node.childNodes[i]; 
+        if ($doc) _recursiveUnmount($doc, $child);
+        _removeInArray($node.children, $child);
+        $child.parentNode = undefined;
+        $node.childNodes.splice(i, 1);
+    }
+}
+function cloneDocument($doc) {
+    return DocumentBuilder.parse($doc.getHTML(), {});
+}
+
+
 module.exports.SelectorService = SelectorService;
 module.exports.Document = Document;
 module.exports.NodeElement = NodeElement;
 module.exports.TextElement = TextElement;
-
 module.exports.DocumentBuilder = DocumentBuilder;
