@@ -27,7 +27,9 @@ var offset = (function(){
 	}
 }());
 
-function last(list){ 
+function last(list, n){ 
+	if (n < 0) return list[list.length + n];
+
 	return list[list.length - 1];
 }
 
@@ -110,7 +112,7 @@ class NodeSignature {
 
 		// tagName can contain colon
 		if (/^[\w\-:_]+$/.test(parts[pos])) {
-			this.tagName = parts[pos].toLowerCase();
+			this.tagName = parts[pos]/*.toLowerCase()*/;
 			pos++;
 		}
 
@@ -410,7 +412,7 @@ var SelectorService = {
 					if(!root){
 						cur = root = new NodeSignature(parts[i + 1]);
 					}else{
-						cur.relationshipTarget = new NodeSignature(parts[i + 1]); // `and` is mean `&&`
+						cur.relationshipTarget = new NodeSignature(parts[i + 1]); // `and` means `&&`
 						cur = cur.relationshipTarget;
 						cur.relationshipType = nextSelect;
 					}
@@ -466,7 +468,7 @@ function NodeMixin(){
 		this.type = 0; // 0 - html, 1 - xml
 		this.childNodes = [];
 		this.children = [];
-		this.stack = [];
+		this.stack = []; // list of Nodes
 	};
 	// @memberOf Document - create node with params
 	// @param {String} tagName - name of node
@@ -486,8 +488,8 @@ function NodeMixin(){
 		this.stack.push(node);
 		return node;
 	};
-	// @memberOf NodeElement - добавляет дочерний элемент
-	// @param {NodeElement/TextElement} node - добавляемый элемент
+	// @memberOf NodeElement - add a child element
+	// @param {NodeElement|TextElement} node - next element
 	Document.prototype.appendChild = function(node){
 		var		lastNode;	
 
@@ -497,6 +499,8 @@ function NodeMixin(){
 				node.previousSibling = lastNode;
 			}
 			this.children.push(node);
+			if (!~this.stack.indexOf(node)) this.stack.push(node);
+			node._registerChildren(this.stack);
 		}
 		
 		if(lastNode = this.childNodes[this.childNodes.length - 1]){
@@ -543,12 +547,15 @@ function NodeMixin(){
 //	NodeElement
 ////////////////////////////////////////////////////////////
 {
-	function NodeElement(tagName){
+	// TODO create NodeElement and HTMLElement
+	// HTMLElement(addClass,removeClass,hasClass) < NodeElement
+	function NodeElement(tagName/*, _tag*/){
 		this.attr = {};
 		this.childNodes = [];
 		this.children = [];
 		this.classList = [];
 		this.tagName = tagName;
+		// this._tag = tag | this.tagName;
 		this.nextSibling = undefined;
 		this.previousSibling = undefined;
 		this.nextElementSibling = undefined;
@@ -571,10 +578,10 @@ function NodeMixin(){
 	NodeElement.prototype.removeClass = function(name){
 		var index = this.classList.indexOf(name);
 
-		if(index != -1) this.classList.splice(index, 1);
+		if(index > -1) this.classList.splice(index, 1);
 	};
 	NodeElement.prototype.hasClass = function(name){
-		return this.classList.indexOf(name) >= 0;
+		return this.classList.indexOf(name) > -1;
 	};
 	// @memberOf NodeElement - добавляет дочерний элемент
 	// @param {NodeElement/TextElement} node - добавляемый элемент
@@ -587,6 +594,12 @@ function NodeMixin(){
 				node.previousSibling = lastNode;
 			}
 			this.children.push(node);
+			
+			const $doc = findDocument(this);
+			if ($doc) {
+				if (!~$doc.stack.indexOf(node)) $doc.stack.push(node);
+				node._registerChildren($doc.stack);
+			}
 		}
 		
 		if(lastNode = this.childNodes[this.childNodes.length - 1]){
@@ -604,7 +617,8 @@ function NodeMixin(){
 
 		// TODO handle Doctype tag
 		// TODO handle xml tag
-		var 	str = '\n' + offset(level) + (this.tagName === 'xml' ? '<?' : '<') + this.tagName;
+		// var 	str = /*'\n' +*/ offset(level) + (this.tagName === 'xml' ? '<?' : '<') + this.tagName;
+		var 	str = (this.tagName === 'xml' ? '<?' : '<') + this.tagName;
 		
 		for(var key in this.attr){
 			str += ' ' + key + (this.attr[key] ? ('=\"' + this.attr[key].replace(/\"/g, '\\"') + '\"') : ''); // Maybe `&quot;`
@@ -622,16 +636,18 @@ function NodeMixin(){
 				if(this.childNodes[i] instanceof NodeElement){
 					str += this.childNodes[i].getHTML(level + 1, asHtml);
 				}else{
-					str += this.childNodes[i].textContent.replace(/\t/g, "&#9;").replace(/\n/g, "&#10;").replace(/\r/g, "&#13;");
+					// TODO think about cases where escaping special characters is necessary 
+					str += this.childNodes[i].textContent/*.replace(/\t/g, '&#9;').replace(/\n/g, '&#10;').replace(/\r/g, '&#13;')*/;
 				}
 			}
 			
-			str += (this.children.length == 0 ? '' : '\n' + offset(level)) + "</" + this.tagName + ">";
+			// str += (this.children.length == 0 ? '' : /*'\n' +*/ offset(level)) + '</' + this.tagName + '>';
+			str += '</' + this.tagName + '>';
 		}
 		
 		return str;
 	};
-	// @param {String|Array} selector - query string or selector treee
+	// @param {String|Array} selector - query string or selector tree
 	NodeElement.prototype.querySelectorAll = function(selector, list){
 		var 	list = list || [],
 				selector = typeof(selector) == 'string' ? SelectorService.parseQuery(selector) : selector;
@@ -667,7 +683,20 @@ function NodeMixin(){
 	NodeElement.prototype._matches = function(selector) {
 		// TODO parse at 
 	}
+	// TODO
+	NodeElement.prototype.clone = undefined
+	/**
+	 * 
+	 * @param {NodeElement[]} stack 
+	 */
 
+	NodeElement.prototype._registerChildren = function(stack){
+		let i = this.children.length;
+		while(i-->0){
+			if (!~stack.indexOf(this)) stack.push(this);
+			this.children[i]._registerChildren(stack);
+		}
+	}
 
 	NodeMixin.call(NodeElement.prototype);
 }
@@ -800,6 +829,7 @@ var DocumentBuilder = {
 		// Detect DocType and remove it from code
 		// Escape CDATA values and comments
 		var 	source = code.
+					// TODO parse as a tag
 					replace(this.DOCTYPE_PATTERN, function(sub, doctype){
 						conf.doctype = doctype.toLowerCase();
 						return '';
@@ -810,6 +840,7 @@ var DocumentBuilder = {
 						if(cdata){
 							out = htmlspecialchars(cdata);
 						}else if(comment){
+							// TODO parse as a tag
 							out = '<!--' + htmlspecialchars(comment) + '-->';
 						}
 						return out;
@@ -837,7 +868,7 @@ var DocumentBuilder = {
 						_node.comments.push(str.slice(4, -3));
 					} 
 					else if (str[1] === '?'){
-						conf.doctype == 'xml';
+						conf.doctype = 'xml';
 						_document.type = 1;
 						var node = this.parseTagContent(str.slice(1, -2), _document);
 						_node.appendChild(node);
@@ -878,7 +909,8 @@ var DocumentBuilder = {
 		
 		if (!partsLength) throw('Parse error not found tag in XmlParser.parseTagContent(). `' + str + '` ');
 
-		var 	tagName = parts[0].toLowerCase(),
+		// XML is case-sensitive!
+		var 	tagName = doc.type === 0 ? parts[0].toLowerCase() : parts[0],
 				i = 1, key, value, cutPoint,
 				attr = {};
 		
@@ -901,12 +933,12 @@ var DocumentBuilder = {
 
 function _removeInArray(list, item) {
     const pos = list.indexOf(item);
-    if (pos > -1) list.splice(item, 1);
+    if (pos > -1) return list.splice(pos, 1);
 }
 function _recursiveUnmount($doc, $node) {
     _removeInArray($doc.stack, $node);
-    if (!Array.isArray($node.childNodes)) return;
-    $node.childNodes.forEach(function($childNode) {
+    if (!Array.isArray($node.children)) return;
+    $node.children.forEach(function($childNode) {
         _recursiveUnmount($doc, $childNode);
     });
 }
@@ -919,15 +951,31 @@ function removeNode($node) {
     _removeInArray($node.parentNode.children, $node);
     _removeInArray($node.parentNode.childNodes, $node);
     $node.parentNode = undefined;
+	if ($node.previousSibling) { // .children
+		$node.previousSibling.nextSibling = $node.nextSibling || null;
+		$node.previousSibling = null;
+	}
+	if ($node.nextSibling) {
+		$node.nextSibling.previousSibling = $node.previousSibling || null;
+		$node.nextSibling = null;
+	}
+	if ($node.previousElementSibling) { // .childNodes
+		$node.previousElementSibling.nextElementSibling = $node.nextElementSibling || null;
+		$node.previousElementSibling = null;
+	}
+	if ($node.nextElementSibling) {
+		$node.nextElementSibling.previousElementSibling = $node.previousElementSibling || null;
+		$node.nextElementSibling = null;
+	}
 }
-function NodeSummary($node){
+function nodeSummary($node){
     if (!$node) return 'not a node';
     return $node.constructor.name + ',' + $node.tagName;
 }
 
 function findDocument($node) {
     let root = $node;
-    while(root && !(root instanceof xmlParser.Document)) {
+    while(root && !(root instanceof Document)) {
         // console.log('R %s', NodeSummary(root))
         root = root.parentNode;
     }
@@ -936,7 +984,7 @@ function findDocument($node) {
 
 function untouchFromDocument($node) {
     const root = findDocument($node);
-    console.log('Parent %s', NodeSummary(root))
+    console.log('Parent %s', nodeSummary(root))
     if (!root) return;
     _recursiveUnmount(root, $node);
 }
@@ -963,4 +1011,10 @@ module.exports.SelectorService = SelectorService;
 module.exports.Document = Document;
 module.exports.NodeElement = NodeElement;
 module.exports.TextElement = TextElement;
+module.exports.last = last;
+module.exports.removeNode = removeNode;
+module.exports.cloneDocument = cloneDocument;
+module.exports.emptyNode = emptyNode;
+module.exports.findDocument = findDocument;
+module.exports.nodeSummary = nodeSummary; 
 module.exports.DocumentBuilder = DocumentBuilder;

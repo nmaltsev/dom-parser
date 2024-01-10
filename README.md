@@ -1,6 +1,7 @@
-## <X|HT>MLParser (C) 2014-2024
+## <X|HT>MLParser
 
 Js library for converting HTML and XML documents into Document Object Model (DOM)
+(C) 2014-2024
 
 ### Features
 
@@ -18,8 +19,6 @@ Support:
 -	CSS selectors: `>>`, ` `, `~`, `>`, `+`
 -	pseudo classes: `:first-child()`, `:last-child()`, `:nth-child(even)`, `:nth-child(odd)`, `:nth-child(2n-1)`, `:nth-child(3)`,
 -	attribute selectors: `[data]`, `[data=abc]`, `[data="abc"]`, `[data*=abc]`, `[data~=abc]`, `[data^=abc]`, `[data$=abc]`, `[data|=abc]`
-
-
 
 ## Implements of pseudo classes
 Implemented:
