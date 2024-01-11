@@ -1,0 +1,14 @@
+{
+    "name": "xrequest",
+    "version": "1",
+    "description": "",
+    "main": "xrequest.js",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "n.maltsev",
+    "license": "ISC",
+    "dependencies": {
+      "ssl-root-cas": "^1.2.5"
+    }
+  }

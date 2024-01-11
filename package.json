@@ -1,6 +1,6 @@
 {
   "name": "dom_parser",
-  "version": "46.2024.01.10",
+  "version": "47.2024.01.11",
   "description": "A tiny markup language parser",
   "main": "xml_parser.js",
   "scripts": {
@@ -8,7 +8,5 @@
   },
   "author": "n.maltsev",
   "license": "ISC",
-  "dependencies": {
-    "ssl-root-cas": "^1.2.5"
-  }
+  "dependencies": {}
 }

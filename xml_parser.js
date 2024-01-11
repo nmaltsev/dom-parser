@@ -1,6 +1,7 @@
 // <X|HT>MLParser (C) 2014-2024
 
 // `[target = "_blank"]` not alowed; `[target="_blank"]` allowed
+// The dot and hash characters must be escaped or quoted in the attribute selector: '[href*=\\.zip]'| '[href*=".zip"]
 
 var _TAGS = {
 	meta: 1,
@@ -110,7 +111,9 @@ class NodeSignature {
 	parseList(parts) {
 		let 	pos = 0;
 
-		// tagName can contain colon
+		// XML tagName can contain colon
+		// TODO Estimate a posibility of a conflict for `<namespace:tag>` and selector `namespace:tag:nth-child(n+1)`
+		// Possibly by escaping `namespace\:tag:nth-child(n+1)`
 		if (/^[\w\-:_]+$/.test(parts[pos])) {
 			this.tagName = parts[pos]/*.toLowerCase()*/;
 			pos++;
@@ -134,7 +137,8 @@ class NodeSignature {
 				this.conditions.push(rule);
 			} else if (!parts[pos]) {
 				pos++;
-			} else if (parts[pos][0] == ':') { // function execution
+			} 
+			else if (parts[pos][0] == ':') { // function execution
 				let 	rule = new FiltrationRule(parts[pos++]),
 						stack = [],
 						brackets = 0;
@@ -162,6 +166,8 @@ class NodeSignature {
 			}
 		}
 
+		// console.log('Conditions')
+		// console.dir(this.conditions)
 		return this;
 	}
 	compareNode(node) {
@@ -219,7 +225,7 @@ class NodeSignature {
 					case 'attr':
 						let 	name = this.conditions[i].option[0],
 								cond = this.conditions[i].option[1],
-								pattern = this.conditions[i].option[2];
+								pattern = this.conditions[i].option[2].replaceAll('\\.', '.');
 						
 						if (!cond) {
 							if (!node.attr.hasOwnProperty(name)) return false;
@@ -232,6 +238,7 @@ class NodeSignature {
 									break;
 								case '*=': // Attribute Contains
 									if (node.attr[name].indexOf(pattern) == -1) return false;
+									// TODO:  if (!~node.attr[name].indexOf(pattern)) return false;
 									break;
 								case '^=': // Attribute Begins
 									if (node.attr[name].indexOf(pattern) != 0) return false;
@@ -253,6 +260,10 @@ class NodeSignature {
 											.split('-')
 											.indexOf(pattern) == -1
 									) return false;
+									break;
+								case '%=': // Attribute not contains (supports by xml_parser only)
+									// if (node.attr[name].indexOf(pattern) != -1) return false;
+									if (~node.attr[name].indexOf(pattern)) return false;
 									break;
 							}
 						} else {
@@ -328,8 +339,12 @@ class NodeSignature {
 		return true;
 	}
 }
-NodeSignature.prototype.NTH_EXPR_PATTERN = /^[\d+-]*n[\d+-]*$/; // `n` important part
-NodeSignature.prototype.NODE_SEPARTORS = /([\*\^\$\~\|]?\=|\"[^"]*\"|#|\.|\[|\]|\(|\)|\:(?:last\-child|first\-child|nth\-child|not))/g;
+NodeSignature.prototype.NTH_EXPR_PATTERN = /^[\d+-]*n[\d+-]*$/; // `n` is an important part
+// Pattern for attribute selector `[\*\^\$\~\|%]?\=`
+// Regex for matching something if it is not preceded by something else (negative lookbehind): `(?<!x)` means "only if it doesn't have "x" before this point"
+// NodeSignature.prototype.NODE_SEPARTORS = /([\*\^\$\~\|%]?\=|\"[^"]*\"|#|\.|\[|\]|\(|\)|\:(?:last\-child|first\-child|nth\-child|not))/g;
+NodeSignature.prototype.NODE_SEPARTORS = /([\*\^\$\~\|%]?\=|\"[^"]*\"|#|(?<!\\)\.|\[|\]|\(|\)|\:(?:last\-child|first\-child|nth\-child|not))/g;
+// Test case: '\\.qq.aaa.ccc\\.bbb'.split(/(#|(?:\\)?\.|\[|\])/g)
 
 
 ////////////////////////////////////////////////////////////
